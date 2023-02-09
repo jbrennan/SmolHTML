@@ -1,0 +1,581 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		960E8C8D299545A80086123C /* SmolApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 960E8C8C299545A80086123C /* SmolApp.swift */; };
+		960E8C8F299545A80086123C /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 960E8C8E299545A80086123C /* ContentView.swift */; };
+		960E8C91299545A80086123C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 960E8C90299545A80086123C /* Assets.xcassets */; };
+		960E8C94299545A80086123C /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 960E8C93299545A80086123C /* Preview Assets.xcassets */; };
+		960E8C9F299545A80086123C /* SmolTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 960E8C9E299545A80086123C /* SmolTests.swift */; };
+		960E8CA9299545A80086123C /* SmolUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 960E8CA8299545A80086123C /* SmolUITests.swift */; };
+		960E8CAB299545A80086123C /* SmolUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 960E8CAA299545A80086123C /* SmolUITestsLaunchTests.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		960E8C9B299545A80086123C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 960E8C81299545A80086123C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 960E8C88299545A80086123C;
+			remoteInfo = Smol;
+		};
+		960E8CA5299545A80086123C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 960E8C81299545A80086123C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 960E8C88299545A80086123C;
+			remoteInfo = Smol;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		960E8C89299545A80086123C /* Smol.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Smol.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		960E8C8C299545A80086123C /* SmolApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmolApp.swift; sourceTree = "<group>"; };
+		960E8C8E299545A80086123C /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		960E8C90299545A80086123C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		960E8C93299545A80086123C /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		960E8C95299545A80086123C /* Smol.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Smol.entitlements; sourceTree = "<group>"; };
+		960E8C9A299545A80086123C /* SmolTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SmolTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		960E8C9E299545A80086123C /* SmolTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmolTests.swift; sourceTree = "<group>"; };
+		960E8CA4299545A80086123C /* SmolUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SmolUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		960E8CA8299545A80086123C /* SmolUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmolUITests.swift; sourceTree = "<group>"; };
+		960E8CAA299545A80086123C /* SmolUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmolUITestsLaunchTests.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		960E8C86299545A80086123C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		960E8C97299545A80086123C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		960E8CA1299545A80086123C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		960E8C80299545A70086123C = {
+			isa = PBXGroup;
+			children = (
+				960E8C8B299545A80086123C /* Smol */,
+				960E8C9D299545A80086123C /* SmolTests */,
+				960E8CA7299545A80086123C /* SmolUITests */,
+				960E8C8A299545A80086123C /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		960E8C8A299545A80086123C /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				960E8C89299545A80086123C /* Smol.app */,
+				960E8C9A299545A80086123C /* SmolTests.xctest */,
+				960E8CA4299545A80086123C /* SmolUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		960E8C8B299545A80086123C /* Smol */ = {
+			isa = PBXGroup;
+			children = (
+				960E8C8C299545A80086123C /* SmolApp.swift */,
+				960E8C8E299545A80086123C /* ContentView.swift */,
+				960E8C90299545A80086123C /* Assets.xcassets */,
+				960E8C95299545A80086123C /* Smol.entitlements */,
+				960E8C92299545A80086123C /* Preview Content */,
+			);
+			path = Smol;
+			sourceTree = "<group>";
+		};
+		960E8C92299545A80086123C /* Preview Content */ = {
+			isa = PBXGroup;
+			children = (
+				960E8C93299545A80086123C /* Preview Assets.xcassets */,
+			);
+			path = "Preview Content";
+			sourceTree = "<group>";
+		};
+		960E8C9D299545A80086123C /* SmolTests */ = {
+			isa = PBXGroup;
+			children = (
+				960E8C9E299545A80086123C /* SmolTests.swift */,
+			);
+			path = SmolTests;
+			sourceTree = "<group>";
+		};
+		960E8CA7299545A80086123C /* SmolUITests */ = {
+			isa = PBXGroup;
+			children = (
+				960E8CA8299545A80086123C /* SmolUITests.swift */,
+				960E8CAA299545A80086123C /* SmolUITestsLaunchTests.swift */,
+			);
+			path = SmolUITests;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		960E8C88299545A80086123C /* Smol */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 960E8CAE299545A80086123C /* Build configuration list for PBXNativeTarget "Smol" */;
+			buildPhases = (
+				960E8C85299545A80086123C /* Sources */,
+				960E8C86299545A80086123C /* Frameworks */,
+				960E8C87299545A80086123C /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Smol;
+			productName = Smol;
+			productReference = 960E8C89299545A80086123C /* Smol.app */;
+			productType = "com.apple.product-type.application";
+		};
+		960E8C99299545A80086123C /* SmolTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 960E8CB1299545A80086123C /* Build configuration list for PBXNativeTarget "SmolTests" */;
+			buildPhases = (
+				960E8C96299545A80086123C /* Sources */,
+				960E8C97299545A80086123C /* Frameworks */,
+				960E8C98299545A80086123C /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				960E8C9C299545A80086123C /* PBXTargetDependency */,
+			);
+			name = SmolTests;
+			productName = SmolTests;
+			productReference = 960E8C9A299545A80086123C /* SmolTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		960E8CA3299545A80086123C /* SmolUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 960E8CB4299545A80086123C /* Build configuration list for PBXNativeTarget "SmolUITests" */;
+			buildPhases = (
+				960E8CA0299545A80086123C /* Sources */,
+				960E8CA1299545A80086123C /* Frameworks */,
+				960E8CA2299545A80086123C /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				960E8CA6299545A80086123C /* PBXTargetDependency */,
+			);
+			name = SmolUITests;
+			productName = SmolUITests;
+			productReference = 960E8CA4299545A80086123C /* SmolUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		960E8C81299545A80086123C /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1400;
+				LastUpgradeCheck = 1400;
+				TargetAttributes = {
+					960E8C88299545A80086123C = {
+						CreatedOnToolsVersion = 14.0.1;
+					};
+					960E8C99299545A80086123C = {
+						CreatedOnToolsVersion = 14.0.1;
+						TestTargetID = 960E8C88299545A80086123C;
+					};
+					960E8CA3299545A80086123C = {
+						CreatedOnToolsVersion = 14.0.1;
+						TestTargetID = 960E8C88299545A80086123C;
+					};
+				};
+			};
+			buildConfigurationList = 960E8C84299545A80086123C /* Build configuration list for PBXProject "Smol" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 960E8C80299545A70086123C;
+			productRefGroup = 960E8C8A299545A80086123C /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				960E8C88299545A80086123C /* Smol */,
+				960E8C99299545A80086123C /* SmolTests */,
+				960E8CA3299545A80086123C /* SmolUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		960E8C87299545A80086123C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				960E8C94299545A80086123C /* Preview Assets.xcassets in Resources */,
+				960E8C91299545A80086123C /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		960E8C98299545A80086123C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		960E8CA2299545A80086123C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		960E8C85299545A80086123C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				960E8C8F299545A80086123C /* ContentView.swift in Sources */,
+				960E8C8D299545A80086123C /* SmolApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		960E8C96299545A80086123C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				960E8C9F299545A80086123C /* SmolTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		960E8CA0299545A80086123C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				960E8CA9299545A80086123C /* SmolUITests.swift in Sources */,
+				960E8CAB299545A80086123C /* SmolUITestsLaunchTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		960E8C9C299545A80086123C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 960E8C88299545A80086123C /* Smol */;
+			targetProxy = 960E8C9B299545A80086123C /* PBXContainerItemProxy */;
+		};
+		960E8CA6299545A80086123C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 960E8C88299545A80086123C /* Smol */;
+			targetProxy = 960E8CA5299545A80086123C /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		960E8CAC299545A80086123C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 12.3;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		960E8CAD299545A80086123C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 12.3;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+			};
+			name = Release;
+		};
+		960E8CAF299545A80086123C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Smol/Smol.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"Smol/Preview Content\"";
+				DEVELOPMENT_TEAM = FMPA3MXEW7;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.nearthespeedoflight.Smol;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		960E8CB0299545A80086123C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Smol/Smol.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"Smol/Preview Content\"";
+				DEVELOPMENT_TEAM = FMPA3MXEW7;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.nearthespeedoflight.Smol;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		960E8CB2299545A80086123C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = FMPA3MXEW7;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 12.3;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.nearthespeedoflight.SmolTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Smol.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Smol";
+			};
+			name = Debug;
+		};
+		960E8CB3299545A80086123C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = FMPA3MXEW7;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 12.3;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.nearthespeedoflight.SmolTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Smol.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Smol";
+			};
+			name = Release;
+		};
+		960E8CB5299545A80086123C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = FMPA3MXEW7;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.nearthespeedoflight.SmolUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = Smol;
+			};
+			name = Debug;
+		};
+		960E8CB6299545A80086123C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = FMPA3MXEW7;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.nearthespeedoflight.SmolUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = Smol;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		960E8C84299545A80086123C /* Build configuration list for PBXProject "Smol" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				960E8CAC299545A80086123C /* Debug */,
+				960E8CAD299545A80086123C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		960E8CAE299545A80086123C /* Build configuration list for PBXNativeTarget "Smol" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				960E8CAF299545A80086123C /* Debug */,
+				960E8CB0299545A80086123C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		960E8CB1299545A80086123C /* Build configuration list for PBXNativeTarget "SmolTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				960E8CB2299545A80086123C /* Debug */,
+				960E8CB3299545A80086123C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		960E8CB4299545A80086123C /* Build configuration list for PBXNativeTarget "SmolUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				960E8CB5299545A80086123C /* Debug */,
+				960E8CB6299545A80086123C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 960E8C81299545A80086123C /* Project object */;
+}
