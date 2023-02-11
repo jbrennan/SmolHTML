@@ -12,20 +12,11 @@
 		960E8C91299545A80086123C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 960E8C90299545A80086123C /* Assets.xcassets */; };
 		960E8C94299545A80086123C /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 960E8C93299545A80086123C /* Preview Assets.xcassets */; };
 		960E8C9F299545A80086123C /* SmolTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 960E8C9E299545A80086123C /* SmolTests.swift */; };
-		960E8CA9299545A80086123C /* SmolUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 960E8CA8299545A80086123C /* SmolUITests.swift */; };
-		960E8CAB299545A80086123C /* SmolUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 960E8CAA299545A80086123C /* SmolUITestsLaunchTests.swift */; };
 		960E8CBA2995468D0086123C /* index.html in Resources */ = {isa = PBXBuildFile; fileRef = 960E8CB92995468D0086123C /* index.html */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
 		960E8C9B299545A80086123C /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 960E8C81299545A80086123C /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 960E8C88299545A80086123C;
-			remoteInfo = Smol;
-		};
-		960E8CA5299545A80086123C /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 960E8C81299545A80086123C /* Project object */;
 			proxyType = 1;
@@ -43,9 +34,6 @@
 		960E8C95299545A80086123C /* Smol.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Smol.entitlements; sourceTree = "<group>"; };
 		960E8C9A299545A80086123C /* SmolTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SmolTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		960E8C9E299545A80086123C /* SmolTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmolTests.swift; sourceTree = "<group>"; };
-		960E8CA4299545A80086123C /* SmolUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SmolUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		960E8CA8299545A80086123C /* SmolUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmolUITests.swift; sourceTree = "<group>"; };
-		960E8CAA299545A80086123C /* SmolUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmolUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		960E8CB92995468D0086123C /* index.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = index.html; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -64,13 +52,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		960E8CA1299545A80086123C /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -79,7 +60,6 @@
 			children = (
 				960E8C8B299545A80086123C /* Smol */,
 				960E8C9D299545A80086123C /* SmolTests */,
-				960E8CA7299545A80086123C /* SmolUITests */,
 				960E8C8A299545A80086123C /* Products */,
 			);
 			sourceTree = "<group>";
@@ -89,7 +69,6 @@
 			children = (
 				960E8C89299545A80086123C /* Smol.app */,
 				960E8C9A299545A80086123C /* SmolTests.xctest */,
-				960E8CA4299545A80086123C /* SmolUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -121,15 +100,6 @@
 				960E8C9E299545A80086123C /* SmolTests.swift */,
 			);
 			path = SmolTests;
-			sourceTree = "<group>";
-		};
-		960E8CA7299545A80086123C /* SmolUITests */ = {
-			isa = PBXGroup;
-			children = (
-				960E8CA8299545A80086123C /* SmolUITests.swift */,
-				960E8CAA299545A80086123C /* SmolUITestsLaunchTests.swift */,
-			);
-			path = SmolUITests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -170,24 +140,6 @@
 			productReference = 960E8C9A299545A80086123C /* SmolTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		960E8CA3299545A80086123C /* SmolUITests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 960E8CB4299545A80086123C /* Build configuration list for PBXNativeTarget "SmolUITests" */;
-			buildPhases = (
-				960E8CA0299545A80086123C /* Sources */,
-				960E8CA1299545A80086123C /* Frameworks */,
-				960E8CA2299545A80086123C /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				960E8CA6299545A80086123C /* PBXTargetDependency */,
-			);
-			name = SmolUITests;
-			productName = SmolUITests;
-			productReference = 960E8CA4299545A80086123C /* SmolUITests.xctest */;
-			productType = "com.apple.product-type.bundle.ui-testing";
-		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -202,10 +154,6 @@
 						CreatedOnToolsVersion = 14.0.1;
 					};
 					960E8C99299545A80086123C = {
-						CreatedOnToolsVersion = 14.0.1;
-						TestTargetID = 960E8C88299545A80086123C;
-					};
-					960E8CA3299545A80086123C = {
 						CreatedOnToolsVersion = 14.0.1;
 						TestTargetID = 960E8C88299545A80086123C;
 					};
@@ -226,7 +174,6 @@
 			targets = (
 				960E8C88299545A80086123C /* Smol */,
 				960E8C99299545A80086123C /* SmolTests */,
-				960E8CA3299545A80086123C /* SmolUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -243,13 +190,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		960E8C98299545A80086123C /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		960E8CA2299545A80086123C /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -276,15 +216,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		960E8CA0299545A80086123C /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				960E8CA9299545A80086123C /* SmolUITests.swift in Sources */,
-				960E8CAB299545A80086123C /* SmolUITestsLaunchTests.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -292,11 +223,6 @@
 			isa = PBXTargetDependency;
 			target = 960E8C88299545A80086123C /* Smol */;
 			targetProxy = 960E8C9B299545A80086123C /* PBXContainerItemProxy */;
-		};
-		960E8CA6299545A80086123C /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 960E8C88299545A80086123C /* Smol */;
-			targetProxy = 960E8CA5299545A80086123C /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -506,40 +432,6 @@
 			};
 			name = Release;
 		};
-		960E8CB5299545A80086123C /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = FMPA3MXEW7;
-				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.nearthespeedoflight.SmolUITests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TEST_TARGET_NAME = Smol;
-			};
-			name = Debug;
-		};
-		960E8CB6299545A80086123C /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = FMPA3MXEW7;
-				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.nearthespeedoflight.SmolUITests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TEST_TARGET_NAME = Smol;
-			};
-			name = Release;
-		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -566,15 +458,6 @@
 			buildConfigurations = (
 				960E8CB2299545A80086123C /* Debug */,
 				960E8CB3299545A80086123C /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		960E8CB4299545A80086123C /* Build configuration list for PBXNativeTarget "SmolUITests" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				960E8CB5299545A80086123C /* Debug */,
-				960E8CB6299545A80086123C /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
