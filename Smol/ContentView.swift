@@ -16,20 +16,20 @@ struct ContentView: View {
             Text("Hello, world!")
         }
         .padding()
-		.onAppear {
-			// todo: tests
-			let program1 = "<html> </html>"
-			let tokenizer = Tokenizer(programText: program1)
-			do {
-				let tokens = try tokenizer.scanAllTokens()
-				
-				let context = ParsingContext(tokens: tokens)
-				let node = try Node.parse(context: context)
-				print(node)
-			} catch {
-				print(error)
-			}
-		}
+//		.onAppear {
+//			// todo: tests
+//			let program1 = "<html> </html>"
+//			let tokenizer = Tokenizer(programText: program1)
+//			do {
+//				let tokens = try tokenizer.scanAllTokens()
+//
+//				let context = ParsingContext(tokens: tokens)
+//				let node = try Node.parse(context: context)
+//				print(node)
+//			} catch {
+//				print(error)
+//			}
+//		}
     }
 }
 
@@ -121,7 +121,7 @@ class Tokenizer {
 		
 		if next.isWhitespace {
 			return
-		} else if next.isLetter {
+		} else if next.isIdentifierCharacter {
 			return scanIdentifier()
 		}
 		
@@ -136,7 +136,7 @@ class Tokenizer {
 		var identifier = String(cursor.previousCharacter())
 		while cursor.isNotAtEnd {
 			let next = cursor.currentCharacter()
-			if next.isLetter {
+			if next.isIdentifierCharacter {
 				identifier.append(next)
 				cursor.advance()
 			} else {
@@ -148,9 +148,19 @@ class Tokenizer {
 	}
 }
 
+private extension Character {
+	var isIdentifierCharacter: Bool {
+		isLetter || isWholeNumber
+	}
+}
+
 class ParsingContext {
 	private let tokens: [Token]
-	private var currentTokenIndex = 0
+	private var tokenIndexStack = [0]
+	private var currentTokenIndex: Int {
+		get { tokenIndexStack.last! }
+		set { tokenIndexStack[tokenIndexStack.endIndex - 1] = newValue }
+	}
 	
 	var isNotAtEnd: Bool {
 		currentTokenIndex < tokens.count
@@ -175,6 +185,27 @@ class ParsingContext {
 		return currentToken
 	}
 	
+	func attempt<ContentType>(action: () throws -> ContentType) throws -> ContentType {
+		tokenIndexStack.append(currentTokenIndex)
+		var shouldRevertIndexStack = true
+		
+		defer {
+			// Pop the stack if `try action()` fails.
+			// doing it this way, instead of catching + rethrowing
+			// so that the error chain continues to the original error, not our rethrow
+			if shouldRevertIndexStack {
+				_ = tokenIndexStack.popLast()
+			}
+		}
+		
+		let result = try action()
+		
+		// we succeeded, so pop the token index stack, and use THAT value as the new current index
+		currentTokenIndex = tokenIndexStack.popLast()!
+		shouldRevertIndexStack = false
+		return result
+	}
+	
 	private func advance(when predicate: (Token) -> Bool) -> Bool {
 		guard isNotAtEnd else { return false }
 		
@@ -191,9 +222,9 @@ protocol Parsable {
 	static func parse(context: ParsingContext) throws -> Self
 }
 
-struct Node: Parsable {
+struct Node: Equatable, Parsable {
 	let element: String
-//	let childNodes: [Node]
+	let childNodes: [Node]
 	
 	enum NodeParseError: Error {
 		case closingTagDidNotMatchOpeningTag(opening: String, closing: String)
@@ -201,22 +232,60 @@ struct Node: Parsable {
 	
 	static func parse(context: ParsingContext) throws -> Node {
 		// "<", identifier, ">", 0-or-more children, "<", "/", identifier, ">"
-		try context.consume(tokenKind: .openAngleBracket, feedback: "Expected a `<`")
-		let identifier = try context.consume(tokenKind: .identifier, feedback: "Expected a tag name")
-		try context.consume(tokenKind: .closeAngleBracket, feedback: "Expected a `>`")
+		let openingIdentifier = try context.consumeBetween(
+			leftToken: .openAngleBracket,
+			content: {
+				try context.consume(tokenKind: .identifier, feedback: "Expected a tag name")
+			},
+			rightToken: .closeAngleBracket
+		)
 		
 		// todo: we're currently ignoring "void elements"
+		
+		
 		// todo: child contents
+		var children = [Node]()
 		
-		try context.consume(tokenKind: .openAngleBracket, feedback: "Expected a `<`")
-		try context.consume(tokenKind: .forwardSlash, feedback: "Expected a `/`")
-		let closingIdentifier = try context.consume(tokenKind: .identifier, feedback: "Expected a tag name")
-		guard identifier.body == closingIdentifier.body else {
-			throw NodeParseError.closingTagDidNotMatchOpeningTag(opening: identifier.body, closing: closingIdentifier.body)
+		// Loop through tokens attempting to parse child nodes
+		// We'll keep accumulating them as long as we can successfully parse them
+		// However, if parsing fails, we'll throw and thus end looping
+		do {
+			while context.isNotAtEnd {
+				let child = try context.attempt {
+					try Node.parse(context: context)
+				}
+				children.append(child)
+			}
+		} catch {
+			print(error)
 		}
-		try context.consume(tokenKind: .closeAngleBracket, feedback: "Expected a `>`")
 		
-		return .init(element: identifier.body)
+
+		_ = try context.consumeBetween(
+			leftToken: .openAngleBracket,
+			content: {
+				try context.consume(tokenKind: .forwardSlash, feedback: "Expected a `/`")
+				let closingIdentifier = try context.consume(tokenKind: .identifier, feedback: "Expected a tag name")
+				guard openingIdentifier.body == closingIdentifier.body else {
+					throw NodeParseError.closingTagDidNotMatchOpeningTag(opening: openingIdentifier.body, closing: closingIdentifier.body)
+				}
+				return closingIdentifier
+			},
+			rightToken: .closeAngleBracket
+		)
+		
+		return .init(element: openingIdentifier.body, childNodes: children)
+	}
+}
+
+extension ParsingContext {
+	@discardableResult
+	func consumeBetween<ContentType>(leftToken: Token.Kind, content: () throws -> ContentType, rightToken: Token.Kind) throws -> ContentType {
+		try consume(tokenKind: leftToken, feedback: "Expected a \(leftToken)")
+		let consumedContent = try content()
+		try consume(tokenKind: rightToken, feedback: "Expected a \(rightToken)")
+		
+		return consumedContent
 	}
 }
 
