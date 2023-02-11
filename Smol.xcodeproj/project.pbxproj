@@ -14,6 +14,7 @@
 		960E8C9F299545A80086123C /* SmolTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 960E8C9E299545A80086123C /* SmolTests.swift */; };
 		960E8CA9299545A80086123C /* SmolUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 960E8CA8299545A80086123C /* SmolUITests.swift */; };
 		960E8CAB299545A80086123C /* SmolUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 960E8CAA299545A80086123C /* SmolUITestsLaunchTests.swift */; };
+		960E8CBA2995468D0086123C /* index.html in Resources */ = {isa = PBXBuildFile; fileRef = 960E8CB92995468D0086123C /* index.html */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -45,6 +46,7 @@
 		960E8CA4299545A80086123C /* SmolUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SmolUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		960E8CA8299545A80086123C /* SmolUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmolUITests.swift; sourceTree = "<group>"; };
 		960E8CAA299545A80086123C /* SmolUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmolUITestsLaunchTests.swift; sourceTree = "<group>"; };
+		960E8CB92995468D0086123C /* index.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = index.html; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -99,6 +101,7 @@
 				960E8C8E299545A80086123C /* ContentView.swift */,
 				960E8C90299545A80086123C /* Assets.xcassets */,
 				960E8C95299545A80086123C /* Smol.entitlements */,
+				960E8CB92995468D0086123C /* index.html */,
 				960E8C92299545A80086123C /* Preview Content */,
 			);
 			path = Smol;
@@ -233,6 +236,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				960E8CBA2995468D0086123C /* index.html in Resources */,
 				960E8C94299545A80086123C /* Preview Assets.xcassets in Resources */,
 				960E8C91299545A80086123C /* Assets.xcassets in Resources */,
 			);
