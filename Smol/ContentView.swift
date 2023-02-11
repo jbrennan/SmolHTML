@@ -195,11 +195,27 @@ struct Node: Parsable {
 	let element: String
 //	let childNodes: [Node]
 	
+	enum NodeParseError: Error {
+		case closingTagDidNotMatchOpeningTag(opening: String, closing: String)
+	}
+	
 	static func parse(context: ParsingContext) throws -> Node {
-		// "<", identifier, ">", ..., "<", "/", identifier, ">"
+		// "<", identifier, ">", 0-or-more children, "<", "/", identifier, ">"
 		try context.consume(tokenKind: .openAngleBracket, feedback: "Expected a `<`")
 		let identifier = try context.consume(tokenKind: .identifier, feedback: "Expected a tag name")
 		try context.consume(tokenKind: .closeAngleBracket, feedback: "Expected a `>`")
+		
+		// todo: we're currently ignoring "void elements"
+		// todo: child contents
+		
+		try context.consume(tokenKind: .openAngleBracket, feedback: "Expected a `<`")
+		try context.consume(tokenKind: .forwardSlash, feedback: "Expected a `/`")
+		let closingIdentifier = try context.consume(tokenKind: .identifier, feedback: "Expected a tag name")
+		guard identifier.body == closingIdentifier.body else {
+			throw NodeParseError.closingTagDidNotMatchOpeningTag(opening: identifier.body, closing: closingIdentifier.body)
+		}
+		try context.consume(tokenKind: .closeAngleBracket, feedback: "Expected a `>`")
+		
 		return .init(element: identifier.body)
 	}
 }
