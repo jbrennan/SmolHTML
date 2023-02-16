@@ -185,6 +185,22 @@ class ParsingContext {
 		return currentToken
 	}
 	
+	/// Similar to `whileNotAtEnd()`, except this call does not `throw`. If the given `perform` closure throws, the results accumulated thus far are returned, vs just propagating up the error like `whileNotAtEnd()` does.
+	///
+	/// Use this method when you want to accumulate results until parsing fails, but you want to keep what you've found so far.
+	func untilThrowOrEndOfTokensReached<ConsumedType>(perform: () throws -> ConsumedType) -> [ConsumedType] {
+		var results = [ConsumedType]()
+		
+		do {
+			while isNotAtEnd {
+				results.append(try perform())
+			}
+		} catch {
+			return results
+		}
+		return results
+	}
+	
 	func attempt<ContentType>(action: () throws -> ContentType) throws -> ContentType {
 		tokenIndexStack.append(currentTokenIndex)
 		var shouldRevertIndexStack = true
@@ -242,23 +258,13 @@ struct Node: Equatable, Parsable {
 		
 		// todo: we're currently ignoring "void elements"
 		
+		// todo: "text run" children
 		
-		// todo: child contents
-		var children = [Node]()
-		
-		// Loop through tokens attempting to parse child nodes
-		// We'll keep accumulating them as long as we can successfully parse them
-		// However, if parsing fails, we'll throw and thus end looping
-		do {
-			while context.isNotAtEnd {
-				let child = try context.attempt {
-					try Node.parse(context: context)
-				}
-				children.append(child)
-			}
-		} catch {
-			print(error)
-		}
+		let children = context.untilThrowOrEndOfTokensReached(perform: {
+			try context.attempt(action: {
+				try Node.parse(context: context)
+			})
+		})
 		
 
 		_ = try context.consumeBetween(
