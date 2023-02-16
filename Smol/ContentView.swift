@@ -244,17 +244,20 @@ struct Node: Equatable, Parsable {
 	
 	enum NodeParseError: Error {
 		case closingTagDidNotMatchOpeningTag(opening: String, closing: String)
+		
+		/// This error will probably get thrown a lot, just to signify that parsing a child failed.
+		/// todo: It's probably wasteful to do it this way!
+		case openingTagWasActuallyClosing(tagName: String)
+		
+		case closingTagWasActuallyOpening(tagName: String)
 	}
 	
 	static func parse(context: ParsingContext) throws -> Node {
 		// "<", identifier, ">", 0-or-more children, "<", "/", identifier, ">"
-		let openingIdentifier = try context.consumeBetween(
-			leftToken: .openAngleBracket,
-			content: {
-				try context.consume(tokenKind: .identifier, feedback: "Expected a tag name")
-			},
-			rightToken: .closeAngleBracket
-		)
+		let openingTag = try Tag.parse(context: context)
+		guard openingTag.isClosing == false else {
+			throw NodeParseError.openingTagWasActuallyClosing(tagName: openingTag.element)
+		}
 		
 		// todo: we're currently ignoring "void elements"
 		
@@ -266,21 +269,34 @@ struct Node: Equatable, Parsable {
 			})
 		})
 		
+		let closingTag = try Tag.parse(context: context)
+		guard closingTag.isClosing else {
+			throw NodeParseError.closingTagWasActuallyOpening(tagName: closingTag.element)
+		}
+		
+		guard openingTag.element == closingTag.element else {
+			throw NodeParseError.closingTagDidNotMatchOpeningTag(opening: openingTag.element, closing: closingTag.element)
+		}
+		
+		return .init(element: openingTag.element, childNodes: children)
+	}
+}
 
-		_ = try context.consumeBetween(
+struct Tag: Parsable {
+	let element: String
+	let isClosing: Bool
+	
+	static func parse(context: ParsingContext) throws -> Tag {
+		try context.consumeBetween(
 			leftToken: .openAngleBracket,
 			content: {
-				try context.consume(tokenKind: .forwardSlash, feedback: "Expected a `/`")
-				let closingIdentifier = try context.consume(tokenKind: .identifier, feedback: "Expected a tag name")
-				guard openingIdentifier.body == closingIdentifier.body else {
-					throw NodeParseError.closingTagDidNotMatchOpeningTag(opening: openingIdentifier.body, closing: closingIdentifier.body)
-				}
-				return closingIdentifier
+				let slashToken = try? context.consume(tokenKind: .forwardSlash, feedback: "Expected a `/`")
+				let identifier = try context.consume(tokenKind: .identifier, feedback: "Expected a tag name")
+				
+				return Tag(element: identifier.body, isClosing: slashToken != nil)
 			},
 			rightToken: .closeAngleBracket
 		)
-		
-		return .init(element: openingIdentifier.body, childNodes: children)
 	}
 }
 
