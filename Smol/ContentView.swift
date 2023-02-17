@@ -16,20 +16,6 @@ struct ContentView: View {
             Text("Hello, world!")
         }
         .padding()
-//		.onAppear {
-//			// todo: tests
-//			let program1 = "<html> </html>"
-//			let tokenizer = Tokenizer(programText: program1)
-//			do {
-//				let tokens = try tokenizer.scanAllTokens()
-//
-//				let context = ParsingContext(tokens: tokens)
-//				let node = try Node.parse(context: context)
-//				print(node)
-//			} catch {
-//				print(error)
-//			}
-//		}
     }
 }
 
@@ -39,10 +25,10 @@ struct ContentView_Previews: PreviewProvider {
     }
 }
 
-struct Token {
+struct Token: Equatable, CustomDebugStringConvertible {
 	
 	enum Kind: Equatable {
-		case openAngleBracket, closeAngleBracket, forwardSlash, identifier
+		case openAngleBracket, closeAngleBracket, forwardSlash, text
 	}
 	
 	let kind: Kind
@@ -61,6 +47,8 @@ struct Token {
 		default: return nil
 		}
 	}
+	
+	var debugDescription: String { body }
 }
 
 class ScanningCursor {
@@ -104,47 +92,37 @@ class Tokenizer {
 	
 	func scanAllTokens() throws -> [Token] {
 		while cursor.isNotAtEnd {
-			startNewToken()
 			try scanNextToken()
 		}
-		print(scannedTokens)
+		
 		return scannedTokens
 	}
 	
-	private func startNewToken() {}
 	private func scanNextToken() throws {
 		let next = cursor.advance()
 		
 		if let token = Token(symbol: next) {
 			return scannedTokens.append(token)
+		} else {
+			scanText()
 		}
-		
-		if next.isWhitespace {
-			return
-		} else if next.isIdentifierCharacter {
-			return scanIdentifier()
+	}
+	
+	private func scanText() {
+		var body = String(cursor.previousCharacter())
+		while cursor.isNotAtEnd {
+			let next = cursor.currentCharacter()
+			if Token(symbol: next) != nil {
+				break
+			}
+			body.append(next)
+			cursor.advance()
 		}
-		
-		throw TokenizerError.unknownToken(next)
+		scannedTokens.append(Token(kind: .text, body: body))
 	}
 	
 	private enum TokenizerError: Error {
 		case unknownToken(Character)
-	}
-	
-	private func scanIdentifier() {
-		var identifier = String(cursor.previousCharacter())
-		while cursor.isNotAtEnd {
-			let next = cursor.currentCharacter()
-			if next.isIdentifierCharacter {
-				identifier.append(next)
-				cursor.advance()
-			} else {
-				break
-			}
-		}
-		
-		scannedTokens.append(Token(kind: .identifier, body: identifier))
 	}
 }
 
@@ -174,6 +152,7 @@ class ParsingContext {
 	
 	enum ParseError: Error {
 		case unexpectedToken(Token, feedback: String)
+		case failedToParse
 	}
 	
 	@discardableResult
@@ -222,6 +201,25 @@ class ParsingContext {
 		return result
 	}
 	
+	func choose<ContentType>(from choices: [() throws -> ContentType]) throws -> ContentType {
+		try attempt(action: {
+			var mostRecentError: Error = ParseError.failedToParse
+			
+			for choice in choices {
+				
+				do {
+					return try attempt(action: {
+						try choice()
+					})
+				} catch {
+					mostRecentError = error
+				}
+			}
+			
+			throw mostRecentError
+		})
+	}
+	
 	private func advance(when predicate: (Token) -> Bool) -> Bool {
 		guard isNotAtEnd else { return false }
 		
@@ -239,8 +237,15 @@ protocol Parsable {
 }
 
 struct Node: Equatable, Parsable {
+	
+	enum Content: Equatable {
+		case text(String)
+		case childNodes([Node])
+		case voidNode
+	}
+	
 	let element: String
-	let childNodes: [Node]
+	let content: Content
 	
 	enum NodeParseError: Error {
 		case closingTagDidNotMatchOpeningTag(opening: String, closing: String)
@@ -250,6 +255,7 @@ struct Node: Equatable, Parsable {
 		case openingTagWasActuallyClosing(tagName: String)
 		
 		case closingTagWasActuallyOpening(tagName: String)
+		case didNotFindAnyText
 	}
 	
 	static func parse(context: ParsingContext) throws -> Node {
@@ -259,15 +265,27 @@ struct Node: Equatable, Parsable {
 			throw NodeParseError.openingTagWasActuallyClosing(tagName: openingTag.element)
 		}
 		
+		print("Parsing <\(openingTag.element)>...")
+		
 		// todo: we're currently ignoring "void elements"
 		
-		// todo: "text run" children
-		
+		print("looking for child nodes...")
 		let children = context.untilThrowOrEndOfTokensReached(perform: {
-			try context.attempt(action: {
-				try Node.parse(context: context)
-			})
+			try context.choose(from: [
+				{ try Node.parse(context: context) },
+				{
+					let textContents = context.untilThrowOrEndOfTokensReached {
+						try context.consume(tokenKind: .text, feedback: "Expected text contents")
+					}
+					guard textContents.isEmpty == false else {
+						throw NodeParseError.didNotFindAnyText
+					}
+					
+					return Node(element: "__textRun", content: .text(textContents.map(\.body).joined()))
+				}
+			])
 		})
+		print("done looking for child nodes, found: \(children.map(\.element))")
 		
 		let closingTag = try Tag.parse(context: context)
 		guard closingTag.isClosing else {
@@ -278,7 +296,9 @@ struct Node: Equatable, Parsable {
 			throw NodeParseError.closingTagDidNotMatchOpeningTag(opening: openingTag.element, closing: closingTag.element)
 		}
 		
-		return .init(element: openingTag.element, childNodes: children)
+		print("Done parsing </\(openingTag.element)>...")
+		
+		return .init(element: openingTag.element, content: .childNodes(children))
 	}
 }
 
@@ -291,7 +311,7 @@ struct Tag: Parsable {
 			leftToken: .openAngleBracket,
 			content: {
 				let slashToken = try? context.consume(tokenKind: .forwardSlash, feedback: "Expected a `/`")
-				let identifier = try context.consume(tokenKind: .identifier, feedback: "Expected a tag name")
+				let identifier = try context.consume(tokenKind: .text, feedback: "Expected a tag name")
 				
 				return Tag(element: identifier.body, isClosing: slashToken != nil)
 			},

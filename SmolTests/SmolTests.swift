@@ -9,9 +9,32 @@ import XCTest
 @testable import Smol
 
 final class SmolTests: XCTestCase {
-
-    func testEmptyHTMLTag() throws {
+	
+	// MARK: - Tokenizer
+	
+	func testTokenizer() throws {
 		let program1 = "<html> </html>"
+		let tokenizer = Tokenizer(programText: program1)
+		
+		let tokens = try tokenizer.scanAllTokens()
+		
+		XCTAssertEqual(tokens, [
+			Token(kind: .openAngleBracket, body: "<"),
+			Token(kind: .text, body: "html"),
+			Token(kind: .closeAngleBracket, body: ">"),
+			Token(kind: .text, body: " "),
+			Token(kind: .openAngleBracket, body: "<"),
+			Token(kind: .forwardSlash, body: "/"),
+			Token(kind: .text, body: "html"),
+			Token(kind: .closeAngleBracket, body: ">"),
+		])
+	}
+	
+	
+	// MARK: - Node parsing
+
+	func testEmptyHTMLTag() throws {
+		let program1 = "<html></html>"
 		let tokenizer = Tokenizer(programText: program1)
 		
 		let tokens = try tokenizer.scanAllTokens()
@@ -19,11 +42,11 @@ final class SmolTests: XCTestCase {
 		let context = ParsingContext(tokens: tokens)
 		let node = try Node.parse(context: context)
 		
-		XCTAssertEqual(node, Node(element: "html", childNodes: []))
+		XCTAssertEqual(node, Node(element: "html", content: .childNodes([])))
     }
 	
 	func testIncorrectlyMatchingTagFails() throws {
-		let program1 = "<html> </body>"
+		let program1 = "<html></body>"
 		let tokenizer = Tokenizer(programText: program1)
 		
 		let tokens = try tokenizer.scanAllTokens()
@@ -41,7 +64,7 @@ final class SmolTests: XCTestCase {
 		let context = ParsingContext(tokens: tokens)
 		let node = try Node.parse(context: context)
 		
-		XCTAssertEqual(node, Node(element: "html", childNodes: [Node(element: "body", childNodes: [])]))
+		XCTAssertEqual(node, Node(element: "html", content: .childNodes([Node(element: "body", content: .childNodes([]))])))
 	}
 	
 	func testDoubleNestedTag() throws {
@@ -53,7 +76,31 @@ final class SmolTests: XCTestCase {
 		let context = ParsingContext(tokens: tokens)
 		let node = try Node.parse(context: context)
 		
-		XCTAssertEqual(node, Node(element: "html", childNodes: [Node(element: "body", childNodes: [Node(element: "h1", childNodes: [])])]))
+		XCTAssertEqual(node, Node(element: "html", content: .childNodes([Node(element: "body", content: .childNodes([Node(element: "h1", content: .childNodes([]))]))])))
+	}
+	
+	func testTagWithJustText() throws {
+		let program1 = "<p>hello</p>"
+		let tokenizer = Tokenizer(programText: program1)
+		
+		let tokens = try tokenizer.scanAllTokens()
+		
+		let context = ParsingContext(tokens: tokens)
+		let node = try Node.parse(context: context)
+		
+		XCTAssertEqual(node, Node(element: "p", content: .childNodes([Node(element: "__textRun", content: .text("hello"))])))
+	}
+	
+	func testTagWithTextAndChildTags() throws {
+		let program1 = "<p>hello <em>there</em></p>"
+		let tokenizer = Tokenizer(programText: program1)
+		
+		let tokens = try tokenizer.scanAllTokens()
+		
+		let context = ParsingContext(tokens: tokens)
+		let node = try Node.parse(context: context)
+		
+		XCTAssertEqual(node, Node(element: "p", content: .childNodes([Node(element: "__textRun", content: .text("hello ")), Node(element: "em", content: .childNodes([Node(element: "__textRun", content: .text("there"))]))])))
 	}
 
 }
