@@ -261,15 +261,18 @@ struct Node: Equatable, Parsable {
 	}
 	
 	static func parse(context: ParsingContext) throws -> Node {
-		// "<", identifier, ">", 0-or-more children, "<", "/", identifier, ">"
-		let openingTag = try Tag.parse(context: context)
-		guard openingTag.isClosing == false else {
-			throw NodeParseError.openingTagWasActuallyClosing(tagName: openingTag.element)
+		
+		let startTag = try Tag.parse(context: context)
+		guard startTag.isEnd == false else {
+			throw NodeParseError.openingTagWasActuallyClosing(tagName: startTag.element)
 		}
 		
-		print("Parsing <\(openingTag.element)>...")
+		print("Parsing <\(startTag.element)>...")
 		
-		// todo: we're currently ignoring "void elements"
+		if startTag.isVoidElement {
+			return Node(element: startTag.element, content: .voidNode)
+		}
+		
 		
 		print("looking for child nodes...")
 		let children = context.untilThrowOrEndOfTokensReached(perform: {
@@ -289,24 +292,31 @@ struct Node: Equatable, Parsable {
 		})
 		print("done looking for child nodes, found: \(children.map(\.element))")
 		
-		let closingTag = try Tag.parse(context: context)
-		guard closingTag.isClosing else {
-			throw NodeParseError.closingTagWasActuallyOpening(tagName: closingTag.element)
+		let endTag = try Tag.parse(context: context)
+		guard endTag.isEnd else {
+			throw NodeParseError.closingTagWasActuallyOpening(tagName: endTag.element)
 		}
 		
-		guard openingTag.element == closingTag.element else {
-			throw NodeParseError.closingTagDidNotMatchOpeningTag(opening: openingTag.element, closing: closingTag.element)
+		guard startTag.element == endTag.element else {
+			throw NodeParseError.closingTagDidNotMatchOpeningTag(opening: startTag.element, closing: endTag.element)
 		}
 		
-		print("Done parsing </\(openingTag.element)>...")
+		print("Done parsing </\(startTag.element)>...")
 		
-		return .init(element: openingTag.element, content: .childNodes(children))
+		return .init(element: startTag.element, content: .childNodes(children))
 	}
 }
 
 struct Tag: Parsable {
+	
+	/// A "void element" is one that has no end tag and no children.
+	static let voidElements = ["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"]
+	
 	let element: String
-	let isClosing: Bool
+	let isEnd: Bool
+	var isVoidElement: Bool {
+		Tag.voidElements.contains(element)
+	}
 	
 	static func parse(context: ParsingContext) throws -> Tag {
 		try context.consumeBetween(
@@ -315,7 +325,10 @@ struct Tag: Parsable {
 				let slashToken = try? context.consume(tokenKind: .forwardSlash, feedback: "Expected a `/`")
 				let identifier = try context.consume(tokenKind: .text, feedback: "Expected a tag name")
 				
-				return Tag(element: identifier.body, isClosing: slashToken != nil)
+				// If there's a trailing slash (eg <img />), consume it but ignore it. this is invalid html
+				_ = try? context.consume(tokenKind: .forwardSlash, feedback: "Expected a trailing `/`")
+				
+				return Tag(element: identifier.body, isEnd: slashToken != nil)
 			},
 			rightToken: .closeAngleBracket
 		)
@@ -332,4 +345,3 @@ extension ParsingContext {
 		return consumedContent
 	}
 }
-

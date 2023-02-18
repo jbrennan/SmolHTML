@@ -102,5 +102,57 @@ final class SmolTests: XCTestCase {
 		
 		XCTAssertEqual(node, Node(element: "p", content: .childNodes([Node(element: Node.textRunElement, content: .text("hello ")), Node(element: "em", content: .childNodes([Node(element: Node.textRunElement, content: .text("there"))]))])))
 	}
+	
+	func testVoidElement() throws {
+		let program1 = "<img>"
+		let tokenizer = Tokenizer(programText: program1)
+		
+		let tokens = try tokenizer.scanAllTokens()
+		
+		let context = ParsingContext(tokens: tokens)
+		let node = try Node.parse(context: context)
+		
+		XCTAssertEqual(node, Node(element: "img", content: .voidNode))
+	}
+	
+	func testVoidElementWithTrailingSlash() throws {
+		let program1 = "<img/>"
+		let tokenizer = Tokenizer(programText: program1)
+		
+		let tokens = try tokenizer.scanAllTokens()
+		
+		let context = ParsingContext(tokens: tokens)
+		let node = try Node.parse(context: context)
+		
+		XCTAssertEqual(node, Node(element: "img", content: .voidNode))
+	}
+	
+//	func testVoidElementWithSpaceAndTrailingSlash() throws {
+//		// this test currently fails because it thinks the element is called "img " (trailing space).
+//		// that tag doesn't match "img" or any other void element, so the parser thinks it's a normal element, and looks for an end tag
+//		// which it can't find.
+//		// I'll probably fix this by making the tokenizer a little more fine-grained in how it accepts whitespace.
+//		let program1 = "<img />"
+//		let tokenizer = Tokenizer(programText: program1)
+//		
+//		let tokens = try tokenizer.scanAllTokens()
+//		
+//		let context = ParsingContext(tokens: tokens)
+//		let node = try Node.parse(context: context)
+//		
+//		XCTAssertEqual(node, Node(element: "img", content: .voidNode))
+//	}
+	
+	func testNestedVoidElement() throws {
+		let program1 = "<html><body><img></body></html>"
+		let tokenizer = Tokenizer(programText: program1)
+		
+		let tokens = try tokenizer.scanAllTokens()
+		
+		let context = ParsingContext(tokens: tokens)
+		let node = try Node.parse(context: context)
+		
+		XCTAssertEqual(node, Node(element: "html", content: .childNodes([Node(element: "body", content: .childNodes([Node(element: "img", content: .voidNode)]))])))
+	}
 
 }
