@@ -238,6 +238,8 @@ protocol Parsable {
 
 struct Node: Equatable, Parsable {
 	
+	static let textRunElement = "__textRun"
+	
 	enum Content: Equatable {
 		case text(String)
 		case childNodes([Node])
@@ -281,7 +283,7 @@ struct Node: Equatable, Parsable {
 						throw NodeParseError.didNotFindAnyText
 					}
 					
-					return Node(element: "__textRun", content: .text(textContents.map(\.body).joined()))
+					return Node(element: Node.textRunElement, content: .text(textContents.map(\.body).joined()))
 				}
 			])
 		})

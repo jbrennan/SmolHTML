@@ -88,7 +88,7 @@ final class SmolTests: XCTestCase {
 		let context = ParsingContext(tokens: tokens)
 		let node = try Node.parse(context: context)
 		
-		XCTAssertEqual(node, Node(element: "p", content: .childNodes([Node(element: "__textRun", content: .text("hello"))])))
+		XCTAssertEqual(node, Node(element: "p", content: .childNodes([Node(element: Node.textRunElement, content: .text("hello"))])))
 	}
 	
 	func testTagWithTextAndChildTags() throws {
@@ -100,7 +100,7 @@ final class SmolTests: XCTestCase {
 		let context = ParsingContext(tokens: tokens)
 		let node = try Node.parse(context: context)
 		
-		XCTAssertEqual(node, Node(element: "p", content: .childNodes([Node(element: "__textRun", content: .text("hello ")), Node(element: "em", content: .childNodes([Node(element: "__textRun", content: .text("there"))]))])))
+		XCTAssertEqual(node, Node(element: "p", content: .childNodes([Node(element: Node.textRunElement, content: .text("hello ")), Node(element: "em", content: .childNodes([Node(element: Node.textRunElement, content: .text("there"))]))])))
 	}
 
 }
