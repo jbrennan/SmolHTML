@@ -22,11 +22,24 @@ final class SmolTests: XCTestCase {
 			Token(kind: .openAngleBracket, body: "<"),
 			Token(kind: .text, body: "html"),
 			Token(kind: .closeAngleBracket, body: ">"),
-			Token(kind: .text, body: " "),
+			Token(kind: .whitespace, body: " "),
 			Token(kind: .openAngleBracket, body: "<"),
 			Token(kind: .forwardSlash, body: "/"),
 			Token(kind: .text, body: "html"),
 			Token(kind: .closeAngleBracket, body: ">"),
+		])
+	}
+	
+	func testTokenizerSplitsOnWhitespace() throws {
+		let program1 = "img src"
+		let tokenizer = Tokenizer(programText: program1)
+		
+		let tokens = try tokenizer.scanAllTokens()
+		
+		XCTAssertEqual(tokens, [
+			Token(kind: .text, body: "img"),
+			Token(kind: .whitespace, body: " "),
+			Token(kind: .text, body: "src"),
 		])
 	}
 	
@@ -42,7 +55,7 @@ final class SmolTests: XCTestCase {
 		let context = ParsingContext(tokens: tokens)
 		let node = try Node.parse(context: context)
 		
-		XCTAssertEqual(node, Node(element: "html", content: .childNodes([])))
+		XCTAssertEqual(node, Node(element: "html", content: .childNodes([]), attributes: [:]))
     }
 	
 	func testIncorrectlyMatchingTagFails() throws {
@@ -64,11 +77,11 @@ final class SmolTests: XCTestCase {
 		let context = ParsingContext(tokens: tokens)
 		let node = try Node.parse(context: context)
 		
-		XCTAssertEqual(node, Node(element: "html", content: .childNodes([Node(element: "body", content: .childNodes([]))])))
+		XCTAssertEqual(node, Node(element: "html", content: .childNodes([Node(element: "body", content: .childNodes([]), attributes: [:])]), attributes: [:]))
 	}
 	
 	func testDoubleNestedTag() throws {
-		let program1 = "<html><body><h1></h1></body></html>"
+		let program1 = "<html>\n<body>\n<h1></h1>\n</body>\n</html>"
 		let tokenizer = Tokenizer(programText: program1)
 		
 		let tokens = try tokenizer.scanAllTokens()
@@ -76,11 +89,11 @@ final class SmolTests: XCTestCase {
 		let context = ParsingContext(tokens: tokens)
 		let node = try Node.parse(context: context)
 		
-		XCTAssertEqual(node, Node(element: "html", content: .childNodes([Node(element: "body", content: .childNodes([Node(element: "h1", content: .childNodes([]))]))])))
+		XCTAssertEqual(node, Node(element: "html", content: .childNodes([Node(element: "body", content: .childNodes([Node(element: "h1", content: .childNodes([]), attributes: [:])]), attributes: [:])]), attributes: [:]))
 	}
 	
 	func testTagWithJustText() throws {
-		let program1 = "<p>hello</p>"
+		let program1 = "<p>hello there</p>"
 		let tokenizer = Tokenizer(programText: program1)
 		
 		let tokens = try tokenizer.scanAllTokens()
@@ -88,7 +101,7 @@ final class SmolTests: XCTestCase {
 		let context = ParsingContext(tokens: tokens)
 		let node = try Node.parse(context: context)
 		
-		XCTAssertEqual(node, Node(element: "p", content: .childNodes([Node(element: Node.textRunElement, content: .text("hello"))])))
+		XCTAssertEqual(node, Node(element: "p", content: .childNodes([Node(element: Node.textRunElement, content: .text("hello there"), attributes: [:])]), attributes: [:]))
 	}
 	
 	func testTagWithTextAndChildTags() throws {
@@ -100,7 +113,7 @@ final class SmolTests: XCTestCase {
 		let context = ParsingContext(tokens: tokens)
 		let node = try Node.parse(context: context)
 		
-		XCTAssertEqual(node, Node(element: "p", content: .childNodes([Node(element: Node.textRunElement, content: .text("hello ")), Node(element: "em", content: .childNodes([Node(element: Node.textRunElement, content: .text("there"))]))])))
+		XCTAssertEqual(node, Node(element: "p", content: .childNodes([Node(element: Node.textRunElement, content: .text("hello "), attributes: [:]), Node(element: "em", content: .childNodes([Node(element: Node.textRunElement, content: .text("there"), attributes: [:])]), attributes: [:])]), attributes: [:]))
 	}
 	
 	func testVoidElement() throws {
@@ -112,7 +125,31 @@ final class SmolTests: XCTestCase {
 		let context = ParsingContext(tokens: tokens)
 		let node = try Node.parse(context: context)
 		
-		XCTAssertEqual(node, Node(element: "img", content: .voidNode))
+		XCTAssertEqual(node, Node(element: "img", content: .voidNode, attributes: [:]))
+	}
+	
+	func testVoidElementWithAttributes() throws {
+		let program1 = "<img src=\"http://example.com/image.png\" width=\"600px\">"
+		let tokenizer = Tokenizer(programText: program1)
+		
+		let tokens = try tokenizer.scanAllTokens()
+		
+		let context = ParsingContext(tokens: tokens)
+		let node = try Node.parse(context: context)
+		
+		XCTAssertEqual(node, Node(element: "img", content: .voidNode, attributes: ["src": "http://example.com/image.png", "width": "600px"]))
+	}
+	
+	func testVoidElementWithHyphenatedAttributeKey() throws {
+		let program1 = "<img data-name=\"hello\">"
+		let tokenizer = Tokenizer(programText: program1)
+		
+		let tokens = try tokenizer.scanAllTokens()
+		
+		let context = ParsingContext(tokens: tokens)
+		let node = try Node.parse(context: context)
+		
+		XCTAssertEqual(node, Node(element: "img", content: .voidNode, attributes: ["data-name": "hello"]))
 	}
 	
 	func testVoidElementWithTrailingSlash() throws {
@@ -124,7 +161,7 @@ final class SmolTests: XCTestCase {
 		let context = ParsingContext(tokens: tokens)
 		let node = try Node.parse(context: context)
 		
-		XCTAssertEqual(node, Node(element: "img", content: .voidNode))
+		XCTAssertEqual(node, Node(element: "img", content: .voidNode, attributes: [:]))
 	}
 	
 //	func testVoidElementWithSpaceAndTrailingSlash() throws {
@@ -152,7 +189,7 @@ final class SmolTests: XCTestCase {
 		let context = ParsingContext(tokens: tokens)
 		let node = try Node.parse(context: context)
 		
-		XCTAssertEqual(node, Node(element: "html", content: .childNodes([Node(element: "body", content: .childNodes([Node(element: "img", content: .voidNode)]))])))
+		XCTAssertEqual(node, Node(element: "html", content: .childNodes([Node(element: "body", content: .childNodes([Node(element: "img", content: .voidNode, attributes: [:])]), attributes: [:])]), attributes: [:]))
 	}
 
 }

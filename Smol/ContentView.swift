@@ -28,7 +28,7 @@ struct ContentView_Previews: PreviewProvider {
 struct Token: Equatable, CustomDebugStringConvertible {
 	
 	enum Kind: Equatable {
-		case openAngleBracket, closeAngleBracket, forwardSlash, text
+		case openAngleBracket, closeAngleBracket, forwardSlash, equals, hyphen, doubleQuote, text, whitespace
 	}
 	
 	let kind: Kind
@@ -44,6 +44,9 @@ struct Token: Equatable, CustomDebugStringConvertible {
 		case "<": self.init(kind: .openAngleBracket, body: "<")
 		case ">": self.init(kind: .closeAngleBracket, body: ">")
 		case "/": self.init(kind: .forwardSlash, body: "/")
+		case "=": self.init(kind: .equals, body: "=")
+		case "-": self.init(kind: .hyphen, body: "-")
+		case "\"": self.init(kind: .doubleQuote, body: "\"")
 		default: return nil
 		}
 	}
@@ -103,6 +106,10 @@ class Tokenizer {
 		
 		if let token = Token(symbol: next) {
 			return scannedTokens.append(token)
+		} else if next.isWhitespace {
+			// todo: group whitespace?
+			// todo: differentiate between newlines and other whitespace?
+			return scannedTokens.append(Token(kind: .whitespace, body: String(next)))
 		} else {
 			scanText()
 		}
@@ -115,6 +122,8 @@ class Tokenizer {
 			if Token(symbol: next) != nil {
 				break
 			}
+			if next.isWhitespace { break }
+			
 			body.append(next)
 			cursor.advance()
 		}
@@ -144,7 +153,9 @@ class ParsingContext {
 		currentTokenIndex < tokens.count
 	}
 	
-	var currentToken: Token { tokens[currentTokenIndex] }
+	/// Might be a whitespace token.
+	var currentToken: Token { isNotAtEnd == false ? tokens.last! : tokens[currentTokenIndex] }
+	var previousToken: Token { tokens[currentTokenIndex - 1] }
 	
 	init(tokens: [Token]) {
 		self.tokens = tokens
@@ -157,11 +168,16 @@ class ParsingContext {
 	
 	@discardableResult
 	func consume(tokenKind kind: Token.Kind, feedback: String) throws -> Token {
-		let currentToken = self.currentToken
-		guard advance(when: { $0.kind == kind }) else {
-			throw ParseError.unexpectedToken(currentToken, feedback: feedback)
+		try consume(where: { $0.kind == kind }, feedback: feedback)
+	}
+	
+	@discardableResult
+	func consume(where predicate: (Token) -> Bool, skipWhitespaceTokens: Bool = true, feedback: String) throws -> Token {
+		let oldCurrentToken = self.currentToken
+		guard advance(when: predicate, skipWhitespaceTokens: skipWhitespaceTokens) else {
+			throw ParseError.unexpectedToken(oldCurrentToken, feedback: feedback)
 		}
-		return currentToken
+		return previousToken
 	}
 	
 	/// Similar to `whileNotAtEnd()`, except this call does not `throw`. If the given `perform` closure throws, the results accumulated thus far are returned, vs just propagating up the error like `whileNotAtEnd()` does.
@@ -220,13 +236,23 @@ class ParsingContext {
 		})
 	}
 	
-	private func advance(when predicate: (Token) -> Bool) -> Bool {
+	private func advance(when predicate: (Token) -> Bool, skipWhitespaceTokens: Bool = true) -> Bool {
+		
+		var skippedWhitespaceCount = 0
+		if skipWhitespaceTokens {
+			while isNotAtEnd && currentToken.kind == .whitespace {
+				currentTokenIndex += 1
+				skippedWhitespaceCount += 1
+			}
+		}
+		
 		guard isNotAtEnd else { return false }
 		
 		if predicate(tokens[currentTokenIndex]) {
 			currentTokenIndex += 1
 			return true
 		} else {
+			currentTokenIndex -= skippedWhitespaceCount
 			return false
 		}
 	}
@@ -248,6 +274,7 @@ struct Node: Equatable, Parsable {
 	
 	let element: String
 	let content: Content
+	let attributes: [String: String]
 	
 	enum NodeParseError: Error {
 		case closingTagDidNotMatchOpeningTag(opening: String, closing: String)
@@ -270,7 +297,7 @@ struct Node: Equatable, Parsable {
 		print("Parsing <\(startTag.element)>...")
 		
 		if startTag.isVoidElement {
-			return Node(element: startTag.element, content: .voidNode)
+			return Node(element: startTag.element, content: .voidNode, attributes: startTag.attributeDictionary)
 		}
 		
 		
@@ -280,13 +307,24 @@ struct Node: Equatable, Parsable {
 				{ try Node.parse(context: context) },
 				{
 					let textContents = context.untilThrowOrEndOfTokensReached {
-						try context.consume(tokenKind: .text, feedback: "Expected text contents")
+						try context.consume(where: { $0.kind != .openAngleBracket }, skipWhitespaceTokens: false, feedback: "Expected a non `<` token")
 					}
 					guard textContents.isEmpty == false else {
 						throw NodeParseError.didNotFindAnyText
 					}
 					
-					return Node(element: Node.textRunElement, content: .text(textContents.map(\.body).joined()))
+					// todo: this does not follow the exact html rules, but good enough for now
+					let contentRun = textContents
+						.map(\.body)
+						.joined()
+						.replacingOccurrences(of: "\n", with: " ")
+						.replacingOccurrences(of: "\t", with: " ")
+					
+					guard contentRun.isEmpty == false && contentRun.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false else {
+						throw NodeParseError.didNotFindAnyText
+					}
+					
+					return Node(element: Node.textRunElement, content: .text(contentRun), attributes: [:])
 				}
 			])
 		})
@@ -303,7 +341,11 @@ struct Node: Equatable, Parsable {
 		
 		print("Done parsing </\(startTag.element)>...")
 		
-		return .init(element: startTag.element, content: .childNodes(children))
+		return .init(
+			element: startTag.element,
+			content: .childNodes(children),
+			attributes: startTag.attributeDictionary
+		)
 	}
 }
 
@@ -314,8 +356,14 @@ struct Tag: Parsable {
 	
 	let element: String
 	let isEnd: Bool
+	let attributes: [Attribute]
+	
 	var isVoidElement: Bool {
 		Tag.voidElements.contains(element)
+	}
+	
+	var attributeDictionary: [String: String] {
+		Dictionary(uniqueKeysWithValues: attributes.map({ ($0.key, $0.value) }))
 	}
 	
 	static func parse(context: ParsingContext) throws -> Tag {
@@ -325,13 +373,54 @@ struct Tag: Parsable {
 				let slashToken = try? context.consume(tokenKind: .forwardSlash, feedback: "Expected a `/`")
 				let identifier = try context.consume(tokenKind: .text, feedback: "Expected a tag name")
 				
+				print("Looking for attributes for tag: \(identifier.body)")
+				let attributes = context.untilThrowOrEndOfTokensReached(perform: {
+					try context.attempt(action: {
+						try Attribute.parse(context: context)
+					})
+				})
+				print("Found attributes: \(attributes)")
+				
 				// If there's a trailing slash (eg <img />), consume it but ignore it. this is invalid html
 				_ = try? context.consume(tokenKind: .forwardSlash, feedback: "Expected a trailing `/`")
 				
-				return Tag(element: identifier.body, isEnd: slashToken != nil)
+				return Tag(element: identifier.body, isEnd: slashToken != nil, attributes: attributes)
 			},
 			rightToken: .closeAngleBracket
 		)
+	}
+}
+
+struct Attribute: Parsable {
+	let key: String
+	let value: String
+	
+//	enum AttributeParseError: Error {
+//		case
+//	}
+	
+	static func parse(context: ParsingContext) throws -> Attribute {
+		// todo: attribute keys can be hyphenated
+		print("Parsing an attribute...")
+		let key = try context.consume(tokenKind: .text, feedback: "Expected an attribute name")
+		try context.consume(tokenKind: .equals, feedback: "Expected an equals sign")
+		// todo: quotes
+		let value = try context.consumeBetween(
+			leftToken: .doubleQuote,
+			content: {
+//				try context.consume(tokenKind: .text, feedback: "Expected a value")
+				let textContents = context.untilThrowOrEndOfTokensReached {
+					try context.consume(where: { $0.kind != .doubleQuote }, skipWhitespaceTokens: false, feedback: "Expected a non `\"` token")
+				}
+
+				return textContents
+					.map(\.body)
+					.joined()
+			},
+			rightToken: .doubleQuote
+		)
+		print("Done parsing attribute. key: \(key), value: \(value)")
+		return Attribute(key: key.body, value: value)
 	}
 }
 
