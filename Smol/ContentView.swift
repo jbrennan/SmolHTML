@@ -404,11 +404,10 @@ struct Attribute: Parsable {
 		print("Parsing an attribute...")
 		let key = try context.consume(tokenKind: .text, feedback: "Expected an attribute name")
 		try context.consume(tokenKind: .equals, feedback: "Expected an equals sign")
-		// todo: quotes
+		// todo: non-quoted values
 		let value = try context.consumeBetween(
 			leftToken: .doubleQuote,
 			content: {
-//				try context.consume(tokenKind: .text, feedback: "Expected a value")
 				let textContents = context.untilThrowOrEndOfTokensReached {
 					try context.consume(where: { $0.kind != .doubleQuote }, skipWhitespaceTokens: false, feedback: "Expected a non `\"` token")
 				}

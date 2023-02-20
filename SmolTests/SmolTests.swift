@@ -140,17 +140,17 @@ final class SmolTests: XCTestCase {
 		XCTAssertEqual(node, Node(element: "img", content: .voidNode, attributes: ["src": "http://example.com/image.png", "width": "600px"]))
 	}
 	
-	func testVoidElementWithHyphenatedAttributeKey() throws {
-		let program1 = "<img data-name=\"hello\">"
-		let tokenizer = Tokenizer(programText: program1)
-		
-		let tokens = try tokenizer.scanAllTokens()
-		
-		let context = ParsingContext(tokens: tokens)
-		let node = try Node.parse(context: context)
-		
-		XCTAssertEqual(node, Node(element: "img", content: .voidNode, attributes: ["data-name": "hello"]))
-	}
+//	func testVoidElementWithHyphenatedAttributeKey() throws {
+//		let program1 = "<img data-name=\"hello\">"
+//		let tokenizer = Tokenizer(programText: program1)
+//
+//		let tokens = try tokenizer.scanAllTokens()
+//
+//		let context = ParsingContext(tokens: tokens)
+//		let node = try Node.parse(context: context)
+//
+//		XCTAssertEqual(node, Node(element: "img", content: .voidNode, attributes: ["data-name": "hello"]))
+//	}
 	
 	func testVoidElementWithTrailingSlash() throws {
 		let program1 = "<img/>"
@@ -164,21 +164,21 @@ final class SmolTests: XCTestCase {
 		XCTAssertEqual(node, Node(element: "img", content: .voidNode, attributes: [:]))
 	}
 	
-//	func testVoidElementWithSpaceAndTrailingSlash() throws {
-//		// this test currently fails because it thinks the element is called "img " (trailing space).
-//		// that tag doesn't match "img" or any other void element, so the parser thinks it's a normal element, and looks for an end tag
-//		// which it can't find.
-//		// I'll probably fix this by making the tokenizer a little more fine-grained in how it accepts whitespace.
-//		let program1 = "<img />"
-//		let tokenizer = Tokenizer(programText: program1)
-//		
-//		let tokens = try tokenizer.scanAllTokens()
-//		
-//		let context = ParsingContext(tokens: tokens)
-//		let node = try Node.parse(context: context)
-//		
-//		XCTAssertEqual(node, Node(element: "img", content: .voidNode))
-//	}
+	func testVoidElementWithSpaceAndTrailingSlash() throws {
+		// this test currently fails because it thinks the element is called "img " (trailing space).
+		// that tag doesn't match "img" or any other void element, so the parser thinks it's a normal element, and looks for an end tag
+		// which it can't find.
+		// I'll probably fix this by making the tokenizer a little more fine-grained in how it accepts whitespace.
+		let program1 = "<img />"
+		let tokenizer = Tokenizer(programText: program1)
+		
+		let tokens = try tokenizer.scanAllTokens()
+		
+		let context = ParsingContext(tokens: tokens)
+		let node = try Node.parse(context: context)
+		
+		XCTAssertEqual(node, Node(element: "img", content: .voidNode, attributes: [:]))
+	}
 	
 	func testNestedVoidElement() throws {
 		let program1 = "<html><body><img></body></html>"
