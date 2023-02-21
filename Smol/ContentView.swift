@@ -8,22 +8,89 @@
 import SwiftUI
 
 struct ContentView: View {
-    var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundColor(.accentColor)
-            Text("Hello, world!")
-        }
-        .padding()
-    }
+	let rootNode: Node
+	var body: some View {
+		BodyView(bodyNode: rootNode.firstDirectChild(named: "body")!)
+//			.background(.white)
+			.navigationTitle(
+				rootNode
+					.firstDirectChild(named: "head")?
+					.firstDirectChild(named: "title")?
+					.firstDirectChild(named: Node.textRunElement)?
+					.textContent ?? "Smol"
+			)
+			.environment(\.font, Font.custom("Times", size: 16))
+	}
 }
 
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
-        ContentView()
+		ContentView(rootNode: rootNode)
     }
 }
+
+struct H1View: View {
+	let node: Node
+	var body: some View {
+		Text(node.firstDirectChild(named: Node.textRunElement)?.textContent ?? "")
+			.font(Font.custom("Times", size: 32))
+			.fontWeight(.bold)
+	}
+}
+
+struct ParagraphView: View {
+	let node: Node
+	var body: some View {
+		Text(node.firstDirectChild(named: Node.textRunElement)?.textContent ?? "")
+	}
+}
+
+struct ImageView: View {
+	let node: Node
+	var body: some View {
+		Image(node.attributes["src"] ?? "")
+			.resizable()
+			.aspectRatio(contentMode: .fill)
+			.frame(width: node.attributes["width"].flatMap(WebSize.init(rawValue:))?.dimension)
+	}
+}
+
+struct WebSize {
+	let rawValue: String
+	
+	var dimension: CGFloat {
+		// trim anything that isn't a digit, then try to parse that into an int. this ignores things like "px"
+		CGFloat(Int(rawValue.prefix(while: \.isWholeNumber)) ?? 0)
+	}
+}
+
+struct BodyView: View {
+	let bodyNode: Node
+	var body: some View {
+		ScrollView {
+			VStack(alignment: .leading, spacing: 20) {
+				ForEach(bodyNode.childNodes, id: \.self) { childNode in
+					switch childNode.element {
+					case "h1": H1View(node: childNode)
+					case "p": ParagraphView(node: childNode)
+					case "img": ImageView(node: childNode)
+					default: Text("oh")
+					}
+				}
+			}
+			.padding(20)
+		}
+		.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+		.background(Color.white)
+	}
+}
+
+//<h1>Welcome to Jason's homepage</h1>
+//<p>On <em>this <strong>page</strong></em> you'll find lots of boring old html, that I'll use to test <strong>the renderer</strong>. And maybe even <a href="https://nearthespeedoflight.com">a link to a website</a>.
+//</p>
+//<img src="crab" width="600px">
+
+let rootNode = try! Node.parse(context: ParsingContext.init(tokens: Tokenizer.init(programText: String.init(contentsOf: Bundle.main.url(forResource: "index", withExtension: "html")!)).scanAllTokens()))
 
 struct Token: Equatable, CustomDebugStringConvertible {
 	
@@ -262,11 +329,11 @@ protocol Parsable {
 	static func parse(context: ParsingContext) throws -> Self
 }
 
-struct Node: Equatable, Parsable {
+struct Node: Hashable, Parsable {
 	
 	static let textRunElement = "__textRun"
 	
-	enum Content: Equatable {
+	enum Content: Hashable {
 		case text(String)
 		case childNodes([Node])
 		case voidNode
@@ -431,5 +498,25 @@ extension ParsingContext {
 		try consume(tokenKind: rightToken, feedback: "Expected a \(rightToken)")
 		
 		return consumedContent
+	}
+}
+
+extension Node {
+	var childNodes: [Node] {
+		switch content {
+		case .voidNode, .text: return []
+		case .childNodes(let nodes): return nodes
+		}
+	}
+	
+	var textContent: String? {
+		switch content {
+		case .childNodes, .voidNode: return nil
+		case .text(let text): return text
+		}
+	}
+	
+	func firstDirectChild(named element: String) -> Node? {
+		childNodes.first(where: { $0.element == element })
 	}
 }

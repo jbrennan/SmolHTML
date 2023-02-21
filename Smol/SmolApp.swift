@@ -11,7 +11,7 @@ import SwiftUI
 struct SmolApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+			ContentView(rootNode: rootNode)
         }
     }
 }
