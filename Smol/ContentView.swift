@@ -8,24 +8,50 @@
 import SwiftUI
 
 struct ContentView: View {
-	let rootNode: Node
+	@ObservedObject var controller: PageController
+//	let rootNode: Node
 	var body: some View {
-		BodyView(bodyNode: rootNode.firstDirectChild(named: "body")!)
+		BodyView(bodyNode: controller.pageNode.firstDirectChild(named: "body")!)
 //			.background(.white)
 			.navigationTitle(
-				rootNode
+				controller.pageNode
 					.firstDirectChild(named: "head")?
 					.firstDirectChild(named: "title")?
 					.firstDirectChild(named: Node.textRunElement)?
 					.textContent ?? "Smol"
 			)
 			.environment(\.font, Font.custom("Times", size: 16))
+			.environment(\.openURL, .init(handler: { url in
+				controller.loadPage(at: url)
+				return .handled
+			}))
 	}
 }
 
+class PageController: ObservableObject {
+	
+	@Published var pageNode: Node
+	
+	init(pageNode: Node) {
+		self.pageNode = pageNode
+	}
+	
+	func loadPage(at url: URL) {
+		Task {
+			let (data, _) = try await URLSession.shared.data(from: url)
+			let htmlString = String(data: data, encoding: .utf8) ?? ""
+			let tokenizer = Tokenizer(programText: htmlString)
+			let context = try ParsingContext(tokens: tokenizer.scanAllTokens())
+			pageNode = try Node.parse(context: context)
+		}
+	}
+}
+
+let pageController = PageController(pageNode: rootNode)
+
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
-		ContentView(rootNode: rootNode)
+		ContentView(controller: pageController)
     }
 }
 
@@ -41,7 +67,10 @@ struct H1View: View {
 struct ParagraphView: View {
 	let node: Node
 	var body: some View {
-		Text(node.firstDirectChild(named: Node.textRunElement)?.textContent ?? "")
+		Text(node.childNodes.map(\.attributedText).reduce(AttributedString(), +))
+			.onAppear {
+				print(node)
+			}
 	}
 }
 
@@ -74,7 +103,7 @@ struct BodyView: View {
 					case "h1": H1View(node: childNode)
 					case "p": ParagraphView(node: childNode)
 					case "img": ImageView(node: childNode)
-					default: Text("oh")
+					default: Text("unknown block element: <\(childNode.element)>")
 					}
 				}
 			}
@@ -85,12 +114,51 @@ struct BodyView: View {
 	}
 }
 
+extension Node {
+	var attributedText: AttributedString {
+		switch element {
+		case Node.textRunElement: return AttributedString(textContent ?? "")
+		case "em":
+			var attributes = AttributeContainer()
+			attributes.font = Font.custom("Times", size: 16).italic()
+			
+			return childNodes.map(\.attributedText).reduce(AttributedString(), +).mergingAttributes(attributes, mergePolicy: .keepCurrent)
+		case "strong":
+			var attributes = AttributeContainer()
+			attributes.font = Font.custom("Times", size: 16).bold()
+			
+			return childNodes.map(\.attributedText).reduce(AttributedString(), +).mergingAttributes(attributes, mergePolicy: .keepCurrent)
+		case "a":
+			var attributes = AttributeContainer()
+			attributes.link = URL(string: self.attributes["href"] ?? "")
+			attributes.underlineStyle = .single
+			
+			return childNodes.map(\.attributedText).reduce(AttributedString(), +).mergingAttributes(attributes, mergePolicy: .keepCurrent)
+		default: return AttributedString()
+		}
+	}
+}
+
+//var combinedTexts: Text {
+//		node.children.map(ParagraphView.text(for:)).reduce(Text(""), +)
+//	}
+//
+//	static func text(for node: Node) -> Text {
+//		switch node.kind {
+//		case .textRun: return Text(verbatim: node.text ?? "")
+//		case .emphasis: return ParagraphView(node: node).combinedTexts.italic()
+//		case .strong: return ParagraphView(node: node).combinedTexts.bold()
+//		case .link: return ParagraphView(node: node).combinedTexts.foregroundColor(.blue).underline()
+//		case .body, .h1, .head, .html, .image, .paragraph, .title, .otherElement: return Text("")
+//		}
+//	}
+
 //<h1>Welcome to Jason's homepage</h1>
 //<p>On <em>this <strong>page</strong></em> you'll find lots of boring old html, that I'll use to test <strong>the renderer</strong>. And maybe even <a href="https://nearthespeedoflight.com">a link to a website</a>.
 //</p>
 //<img src="crab" width="600px">
 
-let rootNode = try! Node.parse(context: ParsingContext.init(tokens: Tokenizer.init(programText: String.init(contentsOf: Bundle.main.url(forResource: "index", withExtension: "html")!)).scanAllTokens()))
+let rootNode = try! Node.parse(context: ParsingContext.init(tokens: Tokenizer.init(programText: String(contentsOf: Bundle.main.url(forResource: "index", withExtension: "html")!)).scanAllTokens()))
 
 struct Token: Equatable, CustomDebugStringConvertible {
 	
@@ -303,7 +371,7 @@ class ParsingContext {
 		})
 	}
 	
-	private func advance(when predicate: (Token) -> Bool, skipWhitespaceTokens: Bool = true) -> Bool {
+	func advance(when predicate: (Token) -> Bool, skipWhitespaceTokens: Bool = true) -> Bool {
 		
 		var skippedWhitespaceCount = 0
 		if skipWhitespaceTokens {
@@ -357,11 +425,16 @@ struct Node: Hashable, Parsable {
 	static func parse(context: ParsingContext) throws -> Node {
 		
 		let startTag = try Tag.parse(context: context)
+		print("just parsed <\(startTag.element)>...")
 		guard startTag.isEnd == false else {
 			throw NodeParseError.openingTagWasActuallyClosing(tagName: startTag.element)
 		}
 		
 		print("Parsing <\(startTag.element)>...")
+		
+		if startTag.element.lowercased() == "!doctype" {
+			print("found doctype tag...")
+		}
 		
 		if startTag.isVoidElement {
 			return Node(element: startTag.element, content: .voidNode, attributes: startTag.attributeDictionary)
@@ -470,6 +543,9 @@ struct Attribute: Parsable {
 		// todo: attribute keys can be hyphenated
 		print("Parsing an attribute...")
 		let key = try context.consume(tokenKind: .text, feedback: "Expected an attribute name")
+		
+		
+		
 		try context.consume(tokenKind: .equals, feedback: "Expected an equals sign")
 		// todo: non-quoted values
 		let value = try context.consumeBetween(
