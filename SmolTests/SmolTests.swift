@@ -140,6 +140,18 @@ final class SmolTests: XCTestCase {
 		XCTAssertEqual(node, Node(element: "img", content: .voidNode, attributes: ["src": "http://example.com/image.png", "width": "600px"]))
 	}
 	
+	func testVoidElementWithKeyOnlyAttributes() throws {
+		let program1 = "<img src autoplay me=\"you\" blep>"
+		let tokenizer = Tokenizer(programText: program1)
+		
+		let tokens = try tokenizer.scanAllTokens()
+		
+		let context = ParsingContext(tokens: tokens)
+		let node = try Node.parse(context: context)
+		
+		XCTAssertEqual(node, Node(element: "img", content: .voidNode, attributes: ["src": "src", "autoplay": "autoplay", "me": "you", "blep": "blep"]))
+	}
+	
 //	func testVoidElementWithHyphenatedAttributeKey() throws {
 //		let program1 = "<img data-name=\"hello\">"
 //		let tokenizer = Tokenizer(programText: program1)
@@ -165,10 +177,6 @@ final class SmolTests: XCTestCase {
 	}
 	
 	func testVoidElementWithSpaceAndTrailingSlash() throws {
-		// this test currently fails because it thinks the element is called "img " (trailing space).
-		// that tag doesn't match "img" or any other void element, so the parser thinks it's a normal element, and looks for an end tag
-		// which it can't find.
-		// I'll probably fix this by making the tokenizer a little more fine-grained in how it accepts whitespace.
 		let program1 = "<img />"
 		let tokenizer = Tokenizer(programText: program1)
 		
@@ -190,6 +198,18 @@ final class SmolTests: XCTestCase {
 		let node = try Node.parse(context: context)
 		
 		XCTAssertEqual(node, Node(element: "html", content: .childNodes([Node(element: "body", content: .childNodes([Node(element: "img", content: .voidNode, attributes: [:])]), attributes: [:])]), attributes: [:]))
+	}
+	
+	func testSkipsCommentTags() throws {
+		let program1 = "<html><!-- comment --><head>hi</head></html>"
+		let tokenizer = Tokenizer(programText: program1)
+		
+		let tokens = try tokenizer.scanAllTokens()
+		
+		let context = ParsingContext(tokens: tokens)
+		let node = try Node.parse(context: context)
+		
+		XCTAssertEqual(node, Node(element: "html", content: .childNodes([Node(element: "head", content: .childNodes([Node(element: Node.textRunElement, content: .text("hi"), attributes: [:])]), attributes: [:])]), attributes: [:]))
 	}
 
 }

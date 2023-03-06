@@ -9,12 +9,12 @@ import SwiftUI
 
 struct ContentView: View {
 	@ObservedObject var controller: PageController
-//	let rootNode: Node
+	
 	var body: some View {
-		BodyView(bodyNode: controller.pageNode.firstDirectChild(named: "body")!)
-//			.background(.white)
+		BodyView(bodyNode: controller.document.htmlNode.firstDirectChild(named: "body")!)
 			.navigationTitle(
-				controller.pageNode
+				controller.document
+					.htmlNode
 					.firstDirectChild(named: "head")?
 					.firstDirectChild(named: "title")?
 					.firstDirectChild(named: Node.textRunElement)?
@@ -30,10 +30,10 @@ struct ContentView: View {
 
 class PageController: ObservableObject {
 	
-	@Published var pageNode: Node
+	@Published var document: Document
 	
-	init(pageNode: Node) {
-		self.pageNode = pageNode
+	init(document: Document) {
+		self.document = document
 	}
 	
 	func loadPage(at url: URL) {
@@ -42,12 +42,19 @@ class PageController: ObservableObject {
 			let htmlString = String(data: data, encoding: .utf8) ?? ""
 			let tokenizer = Tokenizer(programText: htmlString)
 			let context = try ParsingContext(tokens: tokenizer.scanAllTokens())
-			pageNode = try Node.parse(context: context)
+			await MainActor.run {
+				do {
+					document = try Document.parse(context: context)
+					print("document: \(document)")
+				} catch {
+					print("error parsing document: \(error)")
+				}
+			}
 		}
 	}
 }
 
-let pageController = PageController(pageNode: rootNode)
+let pageController = PageController(document: Document(htmlNode: rootNode))
 
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
@@ -163,7 +170,7 @@ let rootNode = try! Node.parse(context: ParsingContext.init(tokens: Tokenizer.in
 struct Token: Equatable, CustomDebugStringConvertible {
 	
 	enum Kind: Equatable {
-		case openAngleBracket, closeAngleBracket, forwardSlash, equals, hyphen, doubleQuote, text, whitespace
+		case openAngleBracket, closeAngleBracket, forwardSlash, equals, hyphen, doubleQuote, text, whitespace, bang
 	}
 	
 	let kind: Kind
@@ -182,6 +189,7 @@ struct Token: Equatable, CustomDebugStringConvertible {
 		case "=": self.init(kind: .equals, body: "=")
 		case "-": self.init(kind: .hyphen, body: "-")
 		case "\"": self.init(kind: .doubleQuote, body: "\"")
+		case "!": self.init(kind: .bang, body: "!")
 		default: return nil
 		}
 	}
@@ -290,6 +298,12 @@ class ParsingContext {
 	
 	/// Might be a whitespace token.
 	var currentToken: Token { isNotAtEnd == false ? tokens.last! : tokens[currentTokenIndex] }
+	
+	/// Might be a whitespace token.
+	var nextToken: Token { tokens[currentTokenIndex + 1] }
+	
+	/// Might be a whitespace token.
+	var nextNextToken: Token { tokens[currentTokenIndex + 2] }
 	var previousToken: Token { tokens[currentTokenIndex - 1] }
 	
 	init(tokens: [Token]) {
@@ -397,9 +411,32 @@ protocol Parsable {
 	static func parse(context: ParsingContext) throws -> Self
 }
 
+/// This type mostly exists right now to handle parsing pages that have a `<!doctype>` node at their root, along with an `<html>` node.
+/// For now, we're discarding the doctype.
+struct Document: Hashable, Parsable {
+	
+	enum DocumentError: Error {
+		case unableToFindHTMLNode
+	}
+	
+	let htmlNode: Node
+	
+	static func parse(context: ParsingContext) throws -> Document {
+		let nodes = context.untilThrowOrEndOfTokensReached {
+			try Node.parse(context: context)
+		}
+		guard let htmlNode = nodes.first(where: { $0.element.lowercased() == "html" }) else {
+			throw DocumentError.unableToFindHTMLNode
+		}
+		
+		return Document(htmlNode: htmlNode)
+	}
+}
+
 struct Node: Hashable, Parsable {
 	
 	static let textRunElement = "__textRun"
+	private static let commentElement = "__comment"
 	
 	enum Content: Hashable {
 		case text(String)
@@ -425,18 +462,20 @@ struct Node: Hashable, Parsable {
 	static func parse(context: ParsingContext) throws -> Node {
 		
 		let startTag = try Tag.parse(context: context)
-		print("just parsed <\(startTag.element)>...")
+		
 		guard startTag.isEnd == false else {
 			throw NodeParseError.openingTagWasActuallyClosing(tagName: startTag.element)
 		}
 		
 		print("Parsing <\(startTag.element)>...")
 		
-		if startTag.element.lowercased() == "!doctype" {
-			print("found doctype tag...")
+		if startTag.element.lowercased() == "doctype" {
+			print("Done parsing \(startTag.element)\n")
+			return Node(element: "doctype", content: .voidNode, attributes: startTag.attributeDictionary)
 		}
 		
 		if startTag.isVoidElement {
+			print("Done parsing \(startTag.element)\n")
 			return Node(element: startTag.element, content: .voidNode, attributes: startTag.attributeDictionary)
 		}
 		
@@ -465,9 +504,38 @@ struct Node: Hashable, Parsable {
 					}
 					
 					return Node(element: Node.textRunElement, content: .text(contentRun), attributes: [:])
+				},
+				{
+					try context.consumeBetween(
+						leftToken: .openAngleBracket,
+						content: {
+							try context.consume(tokenKind: .bang, feedback: "Expected comment to begin with a bang")
+							try context.consume(tokenKind: .hyphen, feedback: "Expected comment to have a hyphen after the bang")
+							try context.consume(tokenKind: .hyphen, feedback: "Expected comment to have two hyphens after the bang")
+							
+							var done = false
+							while done == false {
+								print("current: \(context.currentToken.body), next: \(context.nextToken.body), nextNext: \(context.nextNextToken.body)")
+								if context.currentToken.kind == .hyphen && context.nextToken.kind == .hyphen && context.nextNextToken.kind == .closeAngleBracket {
+//									print(".........consuming the 2 hyphens. now current token is: \(context.currentToken.body)")
+									try context.consume(tokenKind: .hyphen, feedback: "-")
+									try context.consume(tokenKind: .hyphen, feedback: "-")
+									done = true
+								} else {
+									print("munching...\(context.currentToken.body)")
+									try context.consume(where: { _ in true }, skipWhitespaceTokens: false, feedback: "munch munch")
+								}
+							}
+							
+							return Node(element: Node.commentElement, content: .voidNode, attributes: [:])
+						},
+						rightToken: .closeAngleBracket
+					)
 				}
 			])
 		})
+			.filter { $0.element != Node.commentElement }
+		
 		print("done looking for child nodes, found: \(children.map(\.element))")
 		
 		let endTag = try Tag.parse(context: context)
@@ -479,7 +547,7 @@ struct Node: Hashable, Parsable {
 			throw NodeParseError.closingTagDidNotMatchOpeningTag(opening: startTag.element, closing: endTag.element)
 		}
 		
-		print("Done parsing </\(startTag.element)>...")
+		print("Done parsing </\(startTag.element)>...\n")
 		
 		return .init(
 			element: startTag.element,
@@ -511,6 +579,7 @@ struct Tag: Parsable {
 			leftToken: .openAngleBracket,
 			content: {
 				let slashToken = try? context.consume(tokenKind: .forwardSlash, feedback: "Expected a `/`")
+				let bangToken = try? context.consume(tokenKind: .bang, feedback: "Expected a `!`")
 				let identifier = try context.consume(tokenKind: .text, feedback: "Expected a tag name")
 				
 				print("Looking for attributes for tag: \(identifier.body)")
@@ -546,7 +615,10 @@ struct Attribute: Parsable {
 		
 		
 		
-		try context.consume(tokenKind: .equals, feedback: "Expected an equals sign")
+		guard let _ = try? context.consume(tokenKind: .equals, feedback: "Expected an equals sign") else {
+			print("Done parsing key-only attribute: \(key.body)")
+			return Attribute(key: key.body, value: key.body)
+		}
 		// todo: non-quoted values
 		let value = try context.consumeBetween(
 			leftToken: .doubleQuote,
