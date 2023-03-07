@@ -9,7 +9,7 @@ import SwiftUI
 
 struct BrowserView: View {
 	@ObservedObject var controller: PageController
-	@State var address: String = ""
+	@State var address: String = "https://nearthespeedoflight.com"
 	
 	var body: some View {
 		VStack(spacing: 0) {
@@ -39,6 +39,10 @@ struct BrowserView: View {
 			Divider()
 			WebDocumentView(controller: controller)
 				.background(.white)
+				.environment(\.openURL, .init(handler: { url in
+					controller.loadPage(at: url)
+					return .handled
+				}))
 		}
 	}
 }
@@ -54,7 +58,7 @@ struct WebDocumentView: View {
 		case .failed(let error):
 			Text(verbatim: "Failed to load page. Error: \(error)")
 				.frame(maxWidth: .infinity, maxHeight: .infinity)
-		case .loaded(let document):
+		case .loaded(let document, _):
 			BodyView(bodyNode: document.htmlNode.firstDirectChild(named: "body")!)
 				.navigationTitle(
 					document
@@ -65,10 +69,6 @@ struct WebDocumentView: View {
 						.textContent ?? "Smol"
 				)
 				.environment(\.font, Font.custom("Times", size: 16))
-				.environment(\.openURL, .init(handler: { url in
-					controller.loadPage(at: url)
-					return .handled
-				}))
 		}
 	}
 }
@@ -77,29 +77,51 @@ class PageController: ObservableObject {
 	
 	enum State {
 		case notLoaded
-		case loaded(Document)
+		case loaded(Document, URL)
 		case failed(Error)
 	}
 	
+	private enum LoadingError: Error {
+		case failedToLoad(URL)
+	}
+	
 	@Published var state = State.notLoaded
-	private var previousDocuments: [Document] = []
+	private var previousDocuments: [(Document, URL)] = []
+	
+	private var currentlyLoadedURL: URL? {
+		switch state {
+		case .notLoaded, .failed: return nil
+		case .loaded(_, let url): return url
+		}
+	}
 	
 	func loadPage(at url: URL) {
 		Task {
-			let (data, _) = try await URLSession.shared.data(from: url)
+			let fullURL: URL
+			if url.host != nil {
+				fullURL = url
+			} else {
+				guard let previousURL = currentlyLoadedURL else {
+					print("Could not load url \(url) because it didn't have a host and we don't have a previously loaded host either.")
+					self.state = .failed(LoadingError.failedToLoad(url))
+					return
+				}
+				fullURL = URL(string: url.path, relativeTo: previousURL)!
+			}
+			let (data, response) = try await URLSession.shared.data(from: fullURL)
 			let htmlString = String(data: data, encoding: .utf8) ?? ""
 			let tokenizer = Tokenizer(programText: htmlString)
 			let context = try ParsingContext(tokens: tokenizer.scanAllTokens())
+			
 			await MainActor.run {
 				do {
 					let oldState = state
-					state = .loaded(try Document.parse(context: context))
+					state = .loaded(try Document.parse(context: context), response.url ?? fullURL)
 					switch oldState {
 					case .failed, .notLoaded: break
-					case .loaded(let oldDocument):
-						previousDocuments.append(oldDocument)
+					case .loaded(let oldDocument, let oldURL):
+						previousDocuments.append((oldDocument, oldURL))
 					}
-					print("document: \(state)")
 				} catch {
 					print("error parsing document: \(error)")
 					state = .failed(error)
@@ -109,8 +131,8 @@ class PageController: ObservableObject {
 	}
 	
 	func goBack() {
-		guard let previousDocument = previousDocuments.popLast() else { return }
-		state = .loaded(previousDocument)
+		guard let (previousDocument, previousURL) = previousDocuments.popLast() else { return }
+		state = .loaded(previousDocument, previousURL)
 	}
 	func goForward() {}
 }
@@ -126,19 +148,22 @@ struct BrowserView_Previews: PreviewProvider {
 struct H1View: View {
 	let node: Node
 	var body: some View {
-		Text(node.firstDirectChild(named: Node.textRunElement)?.textContent ?? "")
-			.font(Font.custom("Times", size: 32))
-			.fontWeight(.bold)
+		Text(node
+			.childNodes
+			.map { $0.attributedText(defaultFont: Font.custom("Times", size: 32).bold()) }
+			.reduce(AttributedString(), +)
+		)
 	}
 }
 
 struct ParagraphView: View {
 	let node: Node
 	var body: some View {
-		Text(node.childNodes.map(\.attributedText).reduce(AttributedString(), +))
-			.onAppear {
-				print(node)
-			}
+		Text(node
+			.childNodes
+			.map { $0.attributedText(defaultFont: Font.custom("Times", size: 16)) }
+			.reduce(AttributedString(), +)
+		)
 	}
 }
 
@@ -161,20 +186,30 @@ struct WebSize {
 	}
 }
 
+struct BlocksView: View {
+	let children: [Node]
+	
+	var body: some View {
+		VStack(alignment: .leading, spacing: 20) {
+			ForEach(children, id: \.self) { childNode in
+				switch childNode.element {
+				case "h1": H1View(node: childNode)
+				case "p": ParagraphView(node: childNode)
+				case "img": ImageView(node: childNode)
+				case "div", "section", "footer", "article", "header":
+					BlocksView(children: childNode.childNodesSortedIntoBlocks)
+				default: Text("unknown block element: <\(childNode.element)>")
+				}
+			}
+		}
+	}
+}
+
 struct BodyView: View {
 	let bodyNode: Node
 	var body: some View {
 		ScrollView {
-			VStack(alignment: .leading, spacing: 20) {
-				ForEach(bodyNode.childNodes, id: \.self) { childNode in
-					switch childNode.element {
-					case "h1": H1View(node: childNode)
-					case "p": ParagraphView(node: childNode)
-					case "img": ImageView(node: childNode)
-					default: Text("unknown block element: <\(childNode.element)>")
-					}
-				}
-			}
+			BlocksView(children: bodyNode.childNodesSortedIntoBlocks)
 			.padding(20)
 		}
 		.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -183,25 +218,34 @@ struct BodyView: View {
 }
 
 extension Node {
-	var attributedText: AttributedString {
+	func attributedText(defaultFont: Font) -> AttributedString {
 		switch element {
 		case Node.textRunElement: return AttributedString(textContent ?? "")
 		case "em":
 			var attributes = AttributeContainer()
-			attributes.font = Font.custom("Times", size: 16).italic()
+			attributes.font = defaultFont.italic()
 			
-			return childNodes.map(\.attributedText).reduce(AttributedString(), +).mergingAttributes(attributes, mergePolicy: .keepCurrent)
+			return childNodes
+				.map { $0.attributedText(defaultFont: defaultFont) }
+				.reduce(AttributedString(), +)
+				.mergingAttributes(attributes, mergePolicy: .keepCurrent)
 		case "strong":
 			var attributes = AttributeContainer()
-			attributes.font = Font.custom("Times", size: 16).bold()
+			attributes.font = defaultFont.bold()
 			
-			return childNodes.map(\.attributedText).reduce(AttributedString(), +).mergingAttributes(attributes, mergePolicy: .keepCurrent)
+			return childNodes
+				.map { $0.attributedText(defaultFont: defaultFont) }
+				.reduce(AttributedString(), +)
+				.mergingAttributes(attributes, mergePolicy: .keepCurrent)
 		case "a":
 			var attributes = AttributeContainer()
 			attributes.link = URL(string: self.attributes["href"] ?? "")
 			attributes.underlineStyle = .single
 			
-			return childNodes.map(\.attributedText).reduce(AttributedString(), +).mergingAttributes(attributes, mergePolicy: .keepCurrent)
+			return childNodes
+				.map { $0.attributedText(defaultFont: defaultFont) }
+				.reduce(AttributedString(), +)
+				.mergingAttributes(attributes, mergePolicy: .keepCurrent)
 		default: return AttributedString()
 		}
 	}
@@ -495,7 +539,7 @@ struct Document: Hashable, Parsable {
 	}
 }
 
-struct Node: Hashable, Parsable {
+struct Node: Hashable, Parsable, Identifiable {
 	
 	static let textRunElement = "__textRun"
 	private static let commentElement = "__comment"
@@ -509,6 +553,7 @@ struct Node: Hashable, Parsable {
 	let element: String
 	let content: Content
 	let attributes: [String: String]
+	let id = UUID()
 	
 	enum NodeParseError: Error {
 		case closingTagDidNotMatchOpeningTag(opening: String, closing: String)
@@ -524,25 +569,25 @@ struct Node: Hashable, Parsable {
 	static func parse(context: ParsingContext) throws -> Node {
 		
 		let startTag = try Tag.parse(context: context)
-		print("got start tag: \(startTag)")
+//		print("got start tag: \(startTag)")
 		guard startTag.isEnd == false else {
 			throw NodeParseError.openingTagWasActuallyClosing(tagName: startTag.element)
 		}
 		
-		print("Parsing <\(startTag.element)>...")
+//		print("Parsing <\(startTag.element)>...")
 		
 		if startTag.element.lowercased() == "doctype" {
-			print("Done parsing \(startTag.element)\n")
+//			print("Done parsing \(startTag.element)\n")
 			return Node(element: "doctype", content: .voidNode, attributes: startTag.attributeDictionary)
 		}
 		
 		if startTag.isVoidElement {
-			print("Done parsing \(startTag.element)\n")
+//			print("Done parsing \(startTag.element)\n")
 			return Node(element: startTag.element, content: .voidNode, attributes: startTag.attributeDictionary)
 		}
 		
 		
-		print("looking for child nodes...")
+//		print("looking for child nodes...")
 		let children = context.untilThrowOrEndOfTokensReached(perform: {
 			try context.choose(from: [
 				{ try Node.parse(context: context) },
@@ -577,14 +622,13 @@ struct Node: Hashable, Parsable {
 							
 							var done = false
 							while done == false {
-								print("current: \(context.currentToken.body), next: \(context.nextToken.body), nextNext: \(context.nextNextToken.body)")
+								
 								if context.currentToken.kind == .hyphen && context.nextToken.kind == .hyphen && context.nextNextToken.kind == .closeAngleBracket {
-//									print(".........consuming the 2 hyphens. now current token is: \(context.currentToken.body)")
+
 									try context.consume(tokenKind: .hyphen, feedback: "-")
 									try context.consume(tokenKind: .hyphen, feedback: "-")
 									done = true
 								} else {
-									print("munching...\(context.currentToken.body)")
 									try context.consume(where: { _ in true }, skipWhitespaceTokens: false, feedback: "munch munch")
 								}
 							}
@@ -598,7 +642,7 @@ struct Node: Hashable, Parsable {
 		})
 			.filter { $0.element != Node.commentElement }
 		
-		print("done looking for child nodes, found: \(children.map(\.element))")
+//		print("done looking for child nodes, found: \(children.map(\.element))")
 		
 		let endTag = try Tag.parse(context: context)
 		guard endTag.isEnd else {
@@ -609,7 +653,7 @@ struct Node: Hashable, Parsable {
 			throw NodeParseError.closingTagDidNotMatchOpeningTag(opening: startTag.element, closing: endTag.element)
 		}
 		
-		print("Done parsing </\(startTag.element)>...\n")
+//		print("Done parsing </\(startTag.element)>...\n")
 		
 		return .init(
 			element: startTag.element,
@@ -644,17 +688,17 @@ struct Tag: Parsable {
 				let _ = try? context.consume(tokenKind: .bang, feedback: "Expected a `!`")
 				let identifier = try context.consume(tokenKind: .text, feedback: "Expected a tag name")
 				
-				print("Looking for attributes for tag: \(identifier.body)")
+//				print("Looking for attributes for tag: \(identifier.body)")
 				let attributes = context.untilThrowOrEndOfTokensReached(perform: {
 					try context.attempt(action: {
 						try Attribute.parse(context: context)
 					})
 				})
-				print("Found attributes: \(attributes)")
+//				print("Found attributes: \(attributes)")
 				
 				// If there's a trailing slash (eg <img />), consume it but ignore it. this is invalid html
 				_ = try? context.consume(tokenKind: .forwardSlash, feedback: "Expected a trailing `/`")
-				print("about to finish parsing tag: \(identifier.body)")
+//				print("about to finish parsing tag: \(identifier.body)")
 				return Tag(element: identifier.body, isEnd: slashToken != nil, attributes: attributes)
 			},
 			rightToken: .closeAngleBracket
@@ -672,13 +716,13 @@ struct Attribute: Parsable {
 	
 	static func parse(context: ParsingContext) throws -> Attribute {
 		// todo: attribute keys can be hyphenated
-		print("Parsing an attribute...")
+//		print("Parsing an attribute...")
 		let key = try context.consume(tokenKind: .text, feedback: "Expected an attribute name")
 		
 		
 		
 		guard let _ = try? context.consume(tokenKind: .equals, feedback: "Expected an equals sign") else {
-			print("Done parsing key-only attribute: \(key.body)")
+//			print("Done parsing key-only attribute: \(key.body)")
 			return Attribute(key: key.body, value: key.body)
 		}
 		
@@ -733,7 +777,7 @@ struct Attribute: Parsable {
 			}
 		])
 		
-		print("Done parsing attribute. key: \(key), value: \(value)")
+//		print("Done parsing attribute. key: \(key), value: \(value)")
 		return Attribute(key: key.body, value: value)
 	}
 }
@@ -755,6 +799,38 @@ extension Node {
 		case .voidNode, .text: return []
 		case .childNodes(let nodes): return nodes
 		}
+	}
+	
+	var childNodesSortedIntoBlocks: [Node] {
+		var nodesToReturn = [Node]()
+		var inlineElements = [Node]()
+		
+		for node in childNodes {
+			if node.isInlineNode {
+				inlineElements.append(node)
+			} else {
+				if inlineElements.isEmpty == false {
+					// make a fake block element that has all these as children
+					let wrapper = Node(element: "p", content: .childNodes(inlineElements), attributes: [:])
+					// and append it to our list to return
+					nodesToReturn.append(wrapper)
+					// then, empty the inlineElements list
+					inlineElements = []
+				}
+				nodesToReturn.append(node)
+			}
+		}
+		if inlineElements.isEmpty == false {
+			// make a fake block element that has all these as children
+			let wrapper = Node(element: "p", content: .childNodes(inlineElements), attributes: [:])
+			// and append it to our list to return
+			nodesToReturn.append(wrapper)
+		}
+		return nodesToReturn
+	}
+	
+	var isInlineNode: Bool {
+		[Node.textRunElement, "a", "abbr", "acronym", "audio", "b", "bdi", "bdo", "big", "br", "button", "canvas", "cite", "code", "data", "datalist", "del", "dfn", "em", "embed", "i", "iframe", "img", "input", "ins", "kbd", "label", "map", "mark", "meter", "noscript", "object", "output", "picture", "progress", "q", "ruby", "s", "samp", "script", "select", "slot", "small", "span", "strong", "sub", "sup", "svg", "template", "textarea", "time", "u", "tt", "var", "video", "wbr"].contains(element)
 	}
 	
 	var textContent: String? {
