@@ -140,6 +140,30 @@ final class SmolTests: XCTestCase {
 		XCTAssertEqual(node, Node(element: "img", content: .voidNode, attributes: ["src": "http://example.com/image.png", "width": "600px"]))
 	}
 	
+	func testVoidElementWithSingleQuotedAttributes() throws {
+		let program1 = "<img src='http://example.com/image.png' width='600px'>"
+		let tokenizer = Tokenizer(programText: program1)
+		
+		let tokens = try tokenizer.scanAllTokens()
+		
+		let context = ParsingContext(tokens: tokens)
+		let node = try Node.parse(context: context)
+		
+		XCTAssertEqual(node, Node(element: "img", content: .voidNode, attributes: ["src": "http://example.com/image.png", "width": "600px"]))
+	}
+	
+	func testVoidElementWithNonQuotedAttributes() throws {
+		let program1 = "<img src=home width=600>"
+		let tokenizer = Tokenizer(programText: program1)
+		
+		let tokens = try tokenizer.scanAllTokens()
+		
+		let context = ParsingContext(tokens: tokens)
+		let node = try Node.parse(context: context)
+		
+		XCTAssertEqual(node, Node(element: "img", content: .voidNode, attributes: ["src": "home", "width": "600"]))
+	}
+	
 	func testVoidElementWithKeyOnlyAttributes() throws {
 		let program1 = "<img src autoplay me=\"you\" blep>"
 		let tokenizer = Tokenizer(programText: program1)

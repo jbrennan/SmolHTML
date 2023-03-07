@@ -214,7 +214,7 @@ let rootNode = try! Node.parse(context: ParsingContext.init(tokens: Tokenizer.in
 struct Token: Equatable, CustomDebugStringConvertible {
 	
 	enum Kind: Equatable {
-		case openAngleBracket, closeAngleBracket, forwardSlash, equals, hyphen, doubleQuote, text, whitespace, bang
+		case openAngleBracket, closeAngleBracket, forwardSlash, equals, hyphen, singleQuote, doubleQuote, text, whitespace, bang
 	}
 	
 	let kind: Kind
@@ -232,6 +232,7 @@ struct Token: Equatable, CustomDebugStringConvertible {
 		case "/": self.init(kind: .forwardSlash, body: "/")
 		case "=": self.init(kind: .equals, body: "=")
 		case "-": self.init(kind: .hyphen, body: "-")
+		case "'": self.init(kind: .singleQuote, body: "'")
 		case "\"": self.init(kind: .doubleQuote, body: "\"")
 		case "!": self.init(kind: .bang, body: "!")
 		default: return nil
@@ -506,7 +507,7 @@ struct Node: Hashable, Parsable {
 	static func parse(context: ParsingContext) throws -> Node {
 		
 		let startTag = try Tag.parse(context: context)
-		
+		print("got start tag: \(startTag)")
 		guard startTag.isEnd == false else {
 			throw NodeParseError.openingTagWasActuallyClosing(tagName: startTag.element)
 		}
@@ -623,7 +624,7 @@ struct Tag: Parsable {
 			leftToken: .openAngleBracket,
 			content: {
 				let slashToken = try? context.consume(tokenKind: .forwardSlash, feedback: "Expected a `/`")
-				let bangToken = try? context.consume(tokenKind: .bang, feedback: "Expected a `!`")
+				let _ = try? context.consume(tokenKind: .bang, feedback: "Expected a `!`")
 				let identifier = try context.consume(tokenKind: .text, feedback: "Expected a tag name")
 				
 				print("Looking for attributes for tag: \(identifier.body)")
@@ -636,7 +637,7 @@ struct Tag: Parsable {
 				
 				// If there's a trailing slash (eg <img />), consume it but ignore it. this is invalid html
 				_ = try? context.consume(tokenKind: .forwardSlash, feedback: "Expected a trailing `/`")
-				
+				print("about to finish parsing tag: \(identifier.body)")
 				return Tag(element: identifier.body, isEnd: slashToken != nil, attributes: attributes)
 			},
 			rightToken: .closeAngleBracket
@@ -648,9 +649,9 @@ struct Attribute: Parsable {
 	let key: String
 	let value: String
 	
-//	enum AttributeParseError: Error {
-//		case
-//	}
+	enum AttributeParseError: Error {
+		case emptyAttributeValue(key: String)
+	}
 	
 	static func parse(context: ParsingContext) throws -> Attribute {
 		// todo: attribute keys can be hyphenated
@@ -663,20 +664,58 @@ struct Attribute: Parsable {
 			print("Done parsing key-only attribute: \(key.body)")
 			return Attribute(key: key.body, value: key.body)
 		}
-		// todo: non-quoted values
-		let value = try context.consumeBetween(
-			leftToken: .doubleQuote,
-			content: {
+		
+		let value = try context.choose(from: [
+			{
+				try context.consumeBetween(
+					leftToken: .doubleQuote,
+					content: {
+						let textContents = context.untilThrowOrEndOfTokensReached {
+							try context.consume(where: { $0.kind != .doubleQuote }, skipWhitespaceTokens: false, feedback: "Expected a non `\"` token")
+						}
+						
+						return textContents
+							.map(\.body)
+							.joined()
+					},
+					rightToken: .doubleQuote
+				)
+			},
+			{
+				try context.consumeBetween(
+					leftToken: .singleQuote,
+					content: {
+						let textContents = context.untilThrowOrEndOfTokensReached {
+							try context.consume(where: { $0.kind != .singleQuote }, skipWhitespaceTokens: false, feedback: "Expected a non `'` token")
+						}
+						
+						return textContents
+							.map(\.body)
+							.joined()
+					},
+					rightToken: .singleQuote
+				)
+			},
+			{
 				let textContents = context.untilThrowOrEndOfTokensReached {
-					try context.consume(where: { $0.kind != .doubleQuote }, skipWhitespaceTokens: false, feedback: "Expected a non `\"` token")
+					try context.consume(
+						where: {
+							$0.kind != .singleQuote && $0.kind != .doubleQuote && $0.kind != .whitespace && $0.kind != .closeAngleBracket
+					},
+						skipWhitespaceTokens: false,
+						feedback: "Expected non-whitespace, non-quote characters")
 				}
-
+				
+				guard textContents.isEmpty == false else {
+					throw AttributeParseError.emptyAttributeValue(key: key.body)
+				}
+				
 				return textContents
 					.map(\.body)
 					.joined()
-			},
-			rightToken: .doubleQuote
-		)
+			}
+		])
+		
 		print("Done parsing attribute. key: \(key), value: \(value)")
 		return Attribute(key: key.body, value: value)
 	}
