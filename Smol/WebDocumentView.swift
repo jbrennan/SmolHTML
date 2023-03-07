@@ -38,6 +38,7 @@ struct BrowserView: View {
 			.padding()
 			Divider()
 			WebDocumentView(controller: controller)
+				.background(.white)
 		}
 	}
 }
@@ -46,31 +47,42 @@ struct WebDocumentView: View {
 	@ObservedObject var controller: PageController
 	
 	var body: some View {
-		BodyView(bodyNode: controller.document.htmlNode.firstDirectChild(named: "body")!)
-			.navigationTitle(
-				controller.document
-					.htmlNode
-					.firstDirectChild(named: "head")?
-					.firstDirectChild(named: "title")?
-					.firstDirectChild(named: Node.textRunElement)?
-					.textContent ?? "Smol"
-			)
-			.environment(\.font, Font.custom("Times", size: 16))
-			.environment(\.openURL, .init(handler: { url in
-				controller.loadPage(at: url)
-				return .handled
-			}))
+		switch controller.state {
+		case .notLoaded:
+			Text("Let's load a web page!")
+				.frame(maxWidth: .infinity, maxHeight: .infinity)
+		case .failed(let error):
+			Text(verbatim: "Failed to load page. Error: \(error)")
+				.frame(maxWidth: .infinity, maxHeight: .infinity)
+		case .loaded(let document):
+			BodyView(bodyNode: document.htmlNode.firstDirectChild(named: "body")!)
+				.navigationTitle(
+					document
+						.htmlNode
+						.firstDirectChild(named: "head")?
+						.firstDirectChild(named: "title")?
+						.firstDirectChild(named: Node.textRunElement)?
+						.textContent ?? "Smol"
+				)
+				.environment(\.font, Font.custom("Times", size: 16))
+				.environment(\.openURL, .init(handler: { url in
+					controller.loadPage(at: url)
+					return .handled
+				}))
+		}
 	}
 }
 
 class PageController: ObservableObject {
 	
-	@Published var document: Document
-	private var previousDocuments: [Document] = []
-	
-	init(document: Document) {
-		self.document = document
+	enum State {
+		case notLoaded
+		case loaded(Document)
+		case failed(Error)
 	}
+	
+	@Published var state = State.notLoaded
+	private var previousDocuments: [Document] = []
 	
 	func loadPage(at url: URL) {
 		Task {
@@ -80,12 +92,17 @@ class PageController: ObservableObject {
 			let context = try ParsingContext(tokens: tokenizer.scanAllTokens())
 			await MainActor.run {
 				do {
-					let oldDocument = document
-					document = try Document.parse(context: context)
-					previousDocuments.append(oldDocument)
-					print("document: \(document)")
+					let oldState = state
+					state = .loaded(try Document.parse(context: context))
+					switch oldState {
+					case .failed, .notLoaded: break
+					case .loaded(let oldDocument):
+						previousDocuments.append(oldDocument)
+					}
+					print("document: \(state)")
 				} catch {
 					print("error parsing document: \(error)")
+					state = .failed(error)
 				}
 			}
 		}
@@ -93,12 +110,12 @@ class PageController: ObservableObject {
 	
 	func goBack() {
 		guard let previousDocument = previousDocuments.popLast() else { return }
-		document = previousDocument
+		state = .loaded(previousDocument)
 	}
 	func goForward() {}
 }
 
-let pageController = PageController(document: Document(htmlNode: rootNode))
+let pageController = PageController()
 
 struct BrowserView_Previews: PreviewProvider {
     static var previews: some View {
