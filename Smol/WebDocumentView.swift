@@ -7,7 +7,42 @@
 
 import SwiftUI
 
-struct ContentView: View {
+struct BrowserView: View {
+	@ObservedObject var controller: PageController
+	@State var address: String = ""
+	
+	var body: some View {
+		VStack(spacing: 0) {
+			HStack {
+				HStack(spacing: 0) {
+					Button(action: {
+						controller.goBack()
+					}) {
+						Image(systemName: "arrowtriangle.left.fill")
+					}
+					Button(action: {
+						controller.goForward()
+					}) {
+						Image(systemName: "arrowtriangle.right.fill")
+					}
+				}
+				TextField("Address", text: $address)
+					.onSubmit {
+						guard let url = URL(string: address) else {
+							return
+						}
+						controller.loadPage(at: url)
+					}
+					.textFieldStyle(RoundedBorderTextFieldStyle())
+			}
+			.padding()
+			Divider()
+			WebDocumentView(controller: controller)
+		}
+	}
+}
+
+struct WebDocumentView: View {
 	@ObservedObject var controller: PageController
 	
 	var body: some View {
@@ -31,6 +66,7 @@ struct ContentView: View {
 class PageController: ObservableObject {
 	
 	@Published var document: Document
+	private var previousDocuments: [Document] = []
 	
 	init(document: Document) {
 		self.document = document
@@ -44,7 +80,9 @@ class PageController: ObservableObject {
 			let context = try ParsingContext(tokens: tokenizer.scanAllTokens())
 			await MainActor.run {
 				do {
+					let oldDocument = document
 					document = try Document.parse(context: context)
+					previousDocuments.append(oldDocument)
 					print("document: \(document)")
 				} catch {
 					print("error parsing document: \(error)")
@@ -52,13 +90,19 @@ class PageController: ObservableObject {
 			}
 		}
 	}
+	
+	func goBack() {
+		guard let previousDocument = previousDocuments.popLast() else { return }
+		document = previousDocument
+	}
+	func goForward() {}
 }
 
 let pageController = PageController(document: Document(htmlNode: rootNode))
 
-struct ContentView_Previews: PreviewProvider {
+struct BrowserView_Previews: PreviewProvider {
     static var previews: some View {
-		ContentView(controller: pageController)
+		BrowserView(controller: pageController)
     }
 }
 

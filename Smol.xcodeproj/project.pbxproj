@@ -8,7 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		960E8C8D299545A80086123C /* SmolApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 960E8C8C299545A80086123C /* SmolApp.swift */; };
-		960E8C8F299545A80086123C /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 960E8C8E299545A80086123C /* ContentView.swift */; };
+		960E8C8F299545A80086123C /* WebDocumentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 960E8C8E299545A80086123C /* WebDocumentView.swift */; };
 		960E8C91299545A80086123C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 960E8C90299545A80086123C /* Assets.xcassets */; };
 		960E8C94299545A80086123C /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 960E8C93299545A80086123C /* Preview Assets.xcassets */; };
 		960E8C9F299545A80086123C /* SmolTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 960E8C9E299545A80086123C /* SmolTests.swift */; };
@@ -28,7 +28,7 @@
 /* Begin PBXFileReference section */
 		960E8C89299545A80086123C /* Smol.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Smol.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		960E8C8C299545A80086123C /* SmolApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmolApp.swift; sourceTree = "<group>"; };
-		960E8C8E299545A80086123C /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		960E8C8E299545A80086123C /* WebDocumentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebDocumentView.swift; sourceTree = "<group>"; };
 		960E8C90299545A80086123C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		960E8C93299545A80086123C /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		960E8C95299545A80086123C /* Smol.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Smol.entitlements; sourceTree = "<group>"; };
@@ -79,7 +79,7 @@
 			children = (
 				96A66A7E29B3D69B00796244 /* Info.plist */,
 				960E8C8C299545A80086123C /* SmolApp.swift */,
-				960E8C8E299545A80086123C /* ContentView.swift */,
+				960E8C8E299545A80086123C /* WebDocumentView.swift */,
 				960E8C90299545A80086123C /* Assets.xcassets */,
 				960E8C95299545A80086123C /* Smol.entitlements */,
 				960E8CB92995468D0086123C /* index.html */,
@@ -205,7 +205,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				960E8C8F299545A80086123C /* ContentView.swift in Sources */,
+				960E8C8F299545A80086123C /* WebDocumentView.swift in Sources */,
 				960E8C8D299545A80086123C /* SmolApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
