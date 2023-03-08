@@ -425,16 +425,7 @@ class ParsingContext {
 	///
 	/// Use this method when you want to accumulate results until parsing fails, but you want to keep what you've found so far.
 	func untilThrowOrEndOfTokensReached<ConsumedType>(perform: () throws -> ConsumedType) -> [ConsumedType] {
-		var results = [ConsumedType]()
-		
-		do {
-			while isNotAtEnd {
-				results.append(try perform())
-			}
-		} catch {
-			return results
-		}
-		return results
+		untilErrorThrownOrEndOfTokensReached(perform: perform).0
 	}
 	
 	/// Similar to `untilThrowOrEndOfTokensReached` but this one includes the error, if any, that was thrown that ended iterating.
