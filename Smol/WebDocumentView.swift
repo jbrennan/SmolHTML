@@ -201,7 +201,23 @@ struct BlocksView: View {
 				case "blockquote":
 					BlocksView(children: childNode.childNodesSortedIntoBlocks)
 						.padding(.leading, 20)
+				case "ul":
+					ListNodeView(node: childNode)
 				default: Text("unknown block element: <\(childNode.element)>")
+				}
+			}
+		}
+	}
+}
+
+struct ListNodeView: View {
+	let node: Node
+	var body: some View {
+		VStack(alignment: .leading, spacing: 20) {
+			ForEach(node.childNodes, id: \.self) { childNode in
+				HStack(alignment: .top, spacing: 20) {
+					Text("•")
+					BlocksView(children: childNode.childNodesSortedIntoBlocks)
 				}
 			}
 		}
@@ -228,20 +244,20 @@ extension Node {
 			attributes.font = defaultFont
 			
 			return AttributedString(textContent ?? "", attributes: attributes)
-		case "em":
+		case "em", "i":
 			var attributes = AttributeContainer()
 			attributes.font = defaultFont.italic()
 			
 			return childNodes
-				.map { $0.attributedText(defaultFont: defaultFont) }
+				.map { $0.attributedText(defaultFont: defaultFont.italic()) }
 				.reduce(AttributedString(), +)
 				.mergingAttributes(attributes, mergePolicy: .keepCurrent)
-		case "strong":
+		case "strong", "b":
 			var attributes = AttributeContainer()
 			attributes.font = defaultFont.bold()
 			
 			return childNodes
-				.map { $0.attributedText(defaultFont: defaultFont) }
+				.map { $0.attributedText(defaultFont: defaultFont.bold()) }
 				.reduce(AttributedString(), +)
 				.mergingAttributes(attributes, mergePolicy: .keepCurrent)
 		case "a":
