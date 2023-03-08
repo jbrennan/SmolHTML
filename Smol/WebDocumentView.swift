@@ -145,27 +145,23 @@ struct BrowserView_Previews: PreviewProvider {
     }
 }
 
-struct H1View: View {
+/// This view works as a generic "block" / "box" container for inline content.
+///
+/// You might use it for paragraph contents, or h1/2/3/etc contents, or just inline content not in one of those elements.
+struct InlineContentWrappingBlockView: View {
 	let node: Node
+	let defaultFont: Font
+	
 	var body: some View {
-		Text(node
-			.childNodes
-			.map { $0.attributedText(defaultFont: Font.custom("Times", size: 32).bold()) }
-			.reduce(AttributedString(), +)
+		Text(
+			node
+				.childNodes
+				.map { $0.attributedText(defaultFont: defaultFont) }
+				.reduce(AttributedString(), +)
 		)
 	}
 }
 
-struct ParagraphView: View {
-	let node: Node
-	var body: some View {
-		Text(node
-			.childNodes
-			.map { $0.attributedText(defaultFont: Font.custom("Times", size: 16)) }
-			.reduce(AttributedString(), +)
-		)
-	}
-}
 
 struct ImageView: View {
 	let node: Node
@@ -193,11 +189,18 @@ struct BlocksView: View {
 		VStack(alignment: .leading, spacing: 20) {
 			ForEach(children, id: \.self) { childNode in
 				switch childNode.element {
-				case "h1": H1View(node: childNode)
-				case "p": ParagraphView(node: childNode)
+				case "h1":
+					InlineContentWrappingBlockView(node: childNode, defaultFont: Font.custom("Times", size: 32).bold())
+				case "h2":
+					InlineContentWrappingBlockView(node: childNode, defaultFont: Font.custom("Times", size: 28).bold())
+				case "p":
+					InlineContentWrappingBlockView(node: childNode, defaultFont: Font.custom("Times", size: 16))
 				case "img": ImageView(node: childNode)
-				case "div", "section", "footer", "article", "header":
+				case "div", "section", "footer", "article", "header", "nav":
 					BlocksView(children: childNode.childNodesSortedIntoBlocks)
+				case "blockquote":
+					BlocksView(children: childNode.childNodesSortedIntoBlocks)
+						.padding(.leading, 20)
 				default: Text("unknown block element: <\(childNode.element)>")
 				}
 			}
@@ -220,7 +223,11 @@ struct BodyView: View {
 extension Node {
 	func attributedText(defaultFont: Font) -> AttributedString {
 		switch element {
-		case Node.textRunElement: return AttributedString(textContent ?? "")
+		case Node.textRunElement:
+			var attributes = AttributeContainer()
+			attributes.font = defaultFont
+			
+			return AttributedString(textContent ?? "", attributes: attributes)
 		case "em":
 			var attributes = AttributeContainer()
 			attributes.font = defaultFont.italic()
@@ -250,27 +257,6 @@ extension Node {
 		}
 	}
 }
-
-//var combinedTexts: Text {
-//		node.children.map(ParagraphView.text(for:)).reduce(Text(""), +)
-//	}
-//
-//	static func text(for node: Node) -> Text {
-//		switch node.kind {
-//		case .textRun: return Text(verbatim: node.text ?? "")
-//		case .emphasis: return ParagraphView(node: node).combinedTexts.italic()
-//		case .strong: return ParagraphView(node: node).combinedTexts.bold()
-//		case .link: return ParagraphView(node: node).combinedTexts.foregroundColor(.blue).underline()
-//		case .body, .h1, .head, .html, .image, .paragraph, .title, .otherElement: return Text("")
-//		}
-//	}
-
-//<h1>Welcome to Jason's homepage</h1>
-//<p>On <em>this <strong>page</strong></em> you'll find lots of boring old html, that I'll use to test <strong>the renderer</strong>. And maybe even <a href="https://nearthespeedoflight.com">a link to a website</a>.
-//</p>
-//<img src="crab" width="600px">
-
-let rootNode = try! Node.parse(context: ParsingContext.init(tokens: Tokenizer.init(programText: String(contentsOf: Bundle.main.url(forResource: "index", withExtension: "html")!)).scanAllTokens()))
 
 struct Token: Equatable, CustomDebugStringConvertible {
 	
@@ -451,6 +437,22 @@ class ParsingContext {
 		return results
 	}
 	
+	/// Similar to `untilThrowOrEndOfTokensReached` but this one includes the error, if any, that was thrown that ended iterating.
+	///
+	/// You probably want to use the error-less variant of this method most of the time, but this one is useful if you're trying to debug or want fine grained control.
+	func untilErrorThrownOrEndOfTokensReached<ConsumedType>(perform: () throws -> ConsumedType) -> ([ConsumedType], Error?) {
+		var results = [ConsumedType]()
+		
+		do {
+			while isNotAtEnd {
+				results.append(try perform())
+			}
+		} catch {
+			return (results, error)
+		}
+		return (results, nil)
+	}
+	
 	func attempt<ContentType>(action: () throws -> ContentType) throws -> ContentType {
 		tokenIndexStack.append(currentTokenIndex)
 		var shouldRevertIndexStack = true
@@ -528,9 +530,14 @@ struct Document: Hashable, Parsable {
 	let htmlNode: Node
 	
 	static func parse(context: ParsingContext) throws -> Document {
-		let nodes = context.untilThrowOrEndOfTokensReached {
+		let (nodes, error) = context.untilErrorThrownOrEndOfTokensReached {
 			try Node.parse(context: context)
 		}
+		
+		if let error {
+			print("Document finished parsing with an error: \(error)")
+		}
+		
 		guard let htmlNode = nodes.first(where: { $0.element.lowercased() == "html" }) else {
 			throw DocumentError.unableToFindHTMLNode
 		}
@@ -605,10 +612,11 @@ struct Node: Hashable, Parsable, Identifiable {
 						.joined()
 						.replacingOccurrences(of: "\n", with: " ")
 						.replacingOccurrences(of: "\t", with: " ")
+						.replacingOccurrences(of: "&#x000A;", with: "")
 					
-					guard contentRun.isEmpty == false && contentRun.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false else {
-						throw NodeParseError.didNotFindAnyText
-					}
+//					guard contentRun.isEmpty == false && contentRun.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false else {
+//						throw NodeParseError.didNotFindAnyText
+//					}
 					
 					return Node(element: Node.textRunElement, content: .text(contentRun), attributes: [:])
 				},
@@ -640,7 +648,13 @@ struct Node: Hashable, Parsable, Identifiable {
 				}
 			])
 		})
-			.filter { $0.element != Node.commentElement }
+			.filter {
+				if $0.element == Node.commentElement { return false }
+				if $0.element != Node.textRunElement { return true }
+				
+				// filter out empty text run nodes
+				return $0.textContent?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+			}
 		
 //		print("done looking for child nodes, found: \(children.map(\.element))")
 		
