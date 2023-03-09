@@ -9,7 +9,7 @@ import SwiftUI
 
 struct BrowserView: View {
 	@ObservedObject var controller: PageController
-	@State var address: String = "https://nearthespeedoflight.com"
+	@State var address: String = "https://nearthespeedoflight.com/smol.html"
 	
 	var body: some View {
 		VStack(spacing: 0) {
@@ -116,7 +116,7 @@ class PageController: ObservableObject {
 			await MainActor.run {
 				do {
 					let oldState = state
-					state = .loaded(try Document.parse(context: context), response.url ?? fullURL)
+					state = .loaded(try Document.parse(context: context, options: nil), response.url ?? fullURL)
 					switch oldState {
 					case .failed, .notLoaded: break
 					case .loaded(let oldDocument, let oldURL):
@@ -150,13 +150,13 @@ struct BrowserView_Previews: PreviewProvider {
 /// You might use it for paragraph contents, or h1/2/3/etc contents, or just inline content not in one of those elements.
 struct InlineContentWrappingBlockView: View {
 	let node: Node
-	let defaultFont: Font
+	@Environment(\.font) var font
 	
 	var body: some View {
 		Text(
 			node
 				.childNodes
-				.map { $0.attributedText(defaultFont: defaultFont) }
+				.map { $0.attributedText(defaultFont: font ?? Font.custom("Times", size: 16)) }
 				.reduce(AttributedString(), +)
 		)
 	}
@@ -184,25 +184,34 @@ struct WebSize {
 
 struct BlocksView: View {
 	let children: [Node]
+	@Environment(\.font) var font
 	
 	var body: some View {
 		VStack(alignment: .leading, spacing: 20) {
 			ForEach(children, id: \.self) { childNode in
 				switch childNode.element {
 				case "h1":
-					InlineContentWrappingBlockView(node: childNode, defaultFont: Font.custom("Times", size: 32).bold())
+					InlineContentWrappingBlockView(node: childNode)
+						.font(Font.custom("Times", size: 32).bold())
 				case "h2":
-					InlineContentWrappingBlockView(node: childNode, defaultFont: Font.custom("Times", size: 28).bold())
+					InlineContentWrappingBlockView(node: childNode)
+						.font(Font.custom("Times", size: 28).bold())
 				case "p":
-					InlineContentWrappingBlockView(node: childNode, defaultFont: Font.custom("Times", size: 16))
-				case "img": ImageView(node: childNode)
+					InlineContentWrappingBlockView(node: childNode)
+				case "img":
+					ImageView(node: childNode)
 				case "div", "section", "footer", "article", "header", "nav":
 					BlocksView(children: childNode.childNodesSortedIntoBlocks)
+				case "pre":
+					BlocksView(children: childNode.childNodesSortedIntoBlocks)
+						.font(font?.monospaced())
 				case "blockquote":
 					BlocksView(children: childNode.childNodesSortedIntoBlocks)
 						.padding(.leading, 20)
 				case "ul":
 					ListNodeView(node: childNode)
+				case "hr":
+					Divider()
 				default: Text("unknown block element: <\(childNode.element)>")
 				}
 			}
@@ -229,6 +238,7 @@ struct BodyView: View {
 	var body: some View {
 		ScrollView {
 			BlocksView(children: bodyNode.childNodesSortedIntoBlocks)
+				.font(Font.custom("Times", size: 16))
 			.padding(20)
 		}
 		.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -260,6 +270,14 @@ extension Node {
 				.map { $0.attributedText(defaultFont: defaultFont.bold()) }
 				.reduce(AttributedString(), +)
 				.mergingAttributes(attributes, mergePolicy: .keepCurrent)
+		case "code":
+			var attributes = AttributeContainer()
+			attributes.font = defaultFont.monospaced()
+			
+			return childNodes
+				.map { $0.attributedText(defaultFont: defaultFont.monospaced()) }
+				.reduce(AttributedString(), +)
+				.mergingAttributes(attributes, mergePolicy: .keepCurrent)
 		case "a":
 			var attributes = AttributeContainer()
 			attributes.link = URL(string: self.attributes["href"] ?? "")
@@ -269,7 +287,8 @@ extension Node {
 				.map { $0.attributedText(defaultFont: defaultFont) }
 				.reduce(AttributedString(), +)
 				.mergingAttributes(attributes, mergePolicy: .keepCurrent)
-		default: return AttributedString()
+		default:
+			return AttributedString("Unknown inline element <\(element)>")
 		}
 	}
 }
@@ -393,6 +412,7 @@ private extension Character {
 }
 
 class ParsingContext {
+	
 	private let tokens: [Token]
 	private var tokenIndexStack = [0]
 	private var currentTokenIndex: Int {
@@ -523,7 +543,11 @@ class ParsingContext {
 }
 
 protocol Parsable {
-	static func parse(context: ParsingContext) throws -> Self
+	static func parse(context: ParsingContext, options: ParsingOptions?) throws -> Self
+}
+
+struct ParsingOptions {
+	let preservesWhitespace: Bool
 }
 
 /// This type mostly exists right now to handle parsing pages that have a `<!doctype>` node at their root, along with an `<html>` node.
@@ -536,9 +560,9 @@ struct Document: Hashable, Parsable {
 	
 	let htmlNode: Node
 	
-	static func parse(context: ParsingContext) throws -> Document {
+	static func parse(context: ParsingContext, options: ParsingOptions?) throws -> Document {
 		let (nodes, error) = context.untilErrorThrownOrEndOfTokensReached {
-			try Node.parse(context: context)
+			try Node.parse(context: context, options: nil)
 		}
 		
 		if let error {
@@ -553,7 +577,7 @@ struct Document: Hashable, Parsable {
 	}
 }
 
-struct Node: Hashable, Parsable, Identifiable {
+struct Node: Hashable, Parsable {
 	
 	static let textRunElement = "__textRun"
 	private static let commentElement = "__comment"
@@ -567,7 +591,9 @@ struct Node: Hashable, Parsable, Identifiable {
 	let element: String
 	let content: Content
 	let attributes: [String: String]
-	let id = UUID()
+	
+	// todo: this id is breaking all the tests
+//	let id = UUID()
 	
 	enum NodeParseError: Error {
 		case closingTagDidNotMatchOpeningTag(opening: String, closing: String)
@@ -580,9 +606,9 @@ struct Node: Hashable, Parsable, Identifiable {
 		case didNotFindAnyText
 	}
 	
-	static func parse(context: ParsingContext) throws -> Node {
+	static func parse(context: ParsingContext, options: ParsingOptions?) throws -> Node {
 		
-		let startTag = try Tag.parse(context: context)
+		let startTag = try Tag.parse(context: context, options: options)
 //		print("got start tag: \(startTag)")
 		guard startTag.isEnd == false else {
 			throw NodeParseError.openingTagWasActuallyClosing(tagName: startTag.element)
@@ -600,11 +626,12 @@ struct Node: Hashable, Parsable, Identifiable {
 			return Node(element: startTag.element, content: .voidNode, attributes: startTag.attributeDictionary)
 		}
 		
+		let shouldPreserveWhitespace = startTag.element == "pre" || options?.preservesWhitespace ?? false
 		
 //		print("looking for child nodes...")
 		let children = context.untilThrowOrEndOfTokensReached(perform: {
 			try context.choose(from: [
-				{ try Node.parse(context: context) },
+				{ try Node.parse(context: context, options: .init(preservesWhitespace: shouldPreserveWhitespace)) },
 				{
 					let textContents = context.untilThrowOrEndOfTokensReached {
 						try context.consume(where: { $0.kind != .openAngleBracket }, skipWhitespaceTokens: false, feedback: "Expected a non `<` token")
@@ -614,12 +641,28 @@ struct Node: Hashable, Parsable, Identifiable {
 					}
 					
 					// todo: this does not follow the exact html rules, but good enough for now
-					let contentRun = textContents
-						.map(\.body)
-						.joined()
-						.replacingOccurrences(of: "\n", with: " ")
-						.replacingOccurrences(of: "\t", with: " ")
-						.replacingOccurrences(of: "&#x000A;", with: "")
+					let contentRun: String
+					if shouldPreserveWhitespace {
+						contentRun = textContents
+							.map(\.body)
+							.joined()
+							.replacingOccurrences(of: "&#x000A;", with: "")
+							.replacingOccurrences(of: "&lt;", with: "<")
+							.replacingOccurrences(of: "&gt;", with: ">")
+							.replacingOccurrences(of: "&quot;", with: "\"")
+							.replacingOccurrences(of: "&amp;", with: "&")
+					} else {
+						contentRun = textContents
+							.map(\.body)
+							.joined()
+							.replacingOccurrences(of: "&#x000A;", with: "")
+							.replacingOccurrences(of: "\n", with: " ")
+							.replacingOccurrences(of: "\t", with: " ")
+							.replacingOccurrences(of: "&lt;", with: "<")
+							.replacingOccurrences(of: "&gt;", with: ">")
+							.replacingOccurrences(of: "&quot;", with: "\"")
+							.replacingOccurrences(of: "&amp;", with: "&")
+					}
 					
 //					guard contentRun.isEmpty == false && contentRun.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false else {
 //						throw NodeParseError.didNotFindAnyText
@@ -665,7 +708,7 @@ struct Node: Hashable, Parsable, Identifiable {
 		
 //		print("done looking for child nodes, found: \(children.map(\.element))")
 		
-		let endTag = try Tag.parse(context: context)
+		let endTag = try Tag.parse(context: context, options: options)
 		guard endTag.isEnd else {
 			throw NodeParseError.closingTagWasActuallyOpening(tagName: endTag.element)
 		}
@@ -701,7 +744,7 @@ struct Tag: Parsable {
 		Dictionary(uniqueKeysWithValues: attributes.map({ ($0.key, $0.value) }))
 	}
 	
-	static func parse(context: ParsingContext) throws -> Tag {
+	static func parse(context: ParsingContext, options: ParsingOptions?) throws -> Tag {
 		try context.consumeBetween(
 			leftToken: .openAngleBracket,
 			content: {
@@ -712,7 +755,7 @@ struct Tag: Parsable {
 //				print("Looking for attributes for tag: \(identifier.body)")
 				let attributes = context.untilThrowOrEndOfTokensReached(perform: {
 					try context.attempt(action: {
-						try Attribute.parse(context: context)
+						try Attribute.parse(context: context, options: options)
 					})
 				})
 //				print("Found attributes: \(attributes)")
@@ -735,7 +778,7 @@ struct Attribute: Parsable {
 		case emptyAttributeValue(key: String)
 	}
 	
-	static func parse(context: ParsingContext) throws -> Attribute {
+	static func parse(context: ParsingContext, options: ParsingOptions?) throws -> Attribute {
 		// todo: attribute keys can be hyphenated
 //		print("Parsing an attribute...")
 		let key = try context.consume(tokenKind: .text, feedback: "Expected an attribute name")
