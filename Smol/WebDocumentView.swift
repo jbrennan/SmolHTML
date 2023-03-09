@@ -328,7 +328,6 @@ class ScanningCursor {
 	private let programText: String
 	var currentIndex: String.Index
 	
-	// todo: unsure about the logic here...
 	var isNotAtEnd: Bool { currentIndex < programText.endIndex }
 	
 	init(programText: String) {
@@ -377,8 +376,6 @@ class Tokenizer {
 		if let token = Token(symbol: next) {
 			return scannedTokens.append(token)
 		} else if next.isWhitespace {
-			// todo: group whitespace?
-			// todo: differentiate between newlines and other whitespace?
 			return scannedTokens.append(Token(kind: .whitespace, body: String(next)))
 		} else {
 			scanText()
@@ -609,26 +606,22 @@ struct Node: Hashable, Parsable {
 	static func parse(context: ParsingContext, options: ParsingOptions?) throws -> Node {
 		
 		let startTag = try Tag.parse(context: context, options: options)
-//		print("got start tag: \(startTag)")
+		
 		guard startTag.isEnd == false else {
 			throw NodeParseError.openingTagWasActuallyClosing(tagName: startTag.element)
 		}
 		
-//		print("Parsing <\(startTag.element)>...")
 		
 		if startTag.element.lowercased() == "doctype" {
-//			print("Done parsing \(startTag.element)\n")
 			return Node(element: "doctype", content: .voidNode, attributes: startTag.attributeDictionary)
 		}
 		
 		if startTag.isVoidElement {
-//			print("Done parsing \(startTag.element)\n")
 			return Node(element: startTag.element, content: .voidNode, attributes: startTag.attributeDictionary)
 		}
 		
 		let shouldPreserveWhitespace = startTag.element == "pre" || options?.preservesWhitespace ?? false
 		
-//		print("looking for child nodes...")
 		let children = context.untilThrowOrEndOfTokensReached(perform: {
 			try context.choose(from: [
 				{ try Node.parse(context: context, options: .init(preservesWhitespace: shouldPreserveWhitespace)) },
@@ -706,8 +699,6 @@ struct Node: Hashable, Parsable {
 				return $0.textContent?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
 			}
 		
-//		print("done looking for child nodes, found: \(children.map(\.element))")
-		
 		let endTag = try Tag.parse(context: context, options: options)
 		guard endTag.isEnd else {
 			throw NodeParseError.closingTagWasActuallyOpening(tagName: endTag.element)
@@ -716,8 +707,6 @@ struct Node: Hashable, Parsable {
 		guard startTag.element == endTag.element else {
 			throw NodeParseError.closingTagDidNotMatchOpeningTag(opening: startTag.element, closing: endTag.element)
 		}
-		
-//		print("Done parsing </\(startTag.element)>...\n")
 		
 		return .init(
 			element: startTag.element,
@@ -752,17 +741,14 @@ struct Tag: Parsable {
 				let _ = try? context.consume(tokenKind: .bang, feedback: "Expected a `!`")
 				let identifier = try context.consume(tokenKind: .text, feedback: "Expected a tag name")
 				
-//				print("Looking for attributes for tag: \(identifier.body)")
 				let attributes = context.untilThrowOrEndOfTokensReached(perform: {
 					try context.attempt(action: {
 						try Attribute.parse(context: context, options: options)
 					})
 				})
-//				print("Found attributes: \(attributes)")
 				
 				// If there's a trailing slash (eg <img />), consume it but ignore it. this is invalid html
 				_ = try? context.consume(tokenKind: .forwardSlash, feedback: "Expected a trailing `/`")
-//				print("about to finish parsing tag: \(identifier.body)")
 				return Tag(element: identifier.body, isEnd: slashToken != nil, attributes: attributes)
 			},
 			rightToken: .closeAngleBracket
@@ -780,13 +766,9 @@ struct Attribute: Parsable {
 	
 	static func parse(context: ParsingContext, options: ParsingOptions?) throws -> Attribute {
 		// todo: attribute keys can be hyphenated
-//		print("Parsing an attribute...")
 		let key = try context.consume(tokenKind: .text, feedback: "Expected an attribute name")
 		
-		
-		
 		guard let _ = try? context.consume(tokenKind: .equals, feedback: "Expected an equals sign") else {
-//			print("Done parsing key-only attribute: \(key.body)")
 			return Attribute(key: key.body, value: key.body)
 		}
 		
@@ -841,7 +823,6 @@ struct Attribute: Parsable {
 			}
 		])
 		
-//		print("Done parsing attribute. key: \(key), value: \(value)")
 		return Attribute(key: key.body, value: value)
 	}
 }

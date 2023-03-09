@@ -30,8 +30,8 @@
             filePath = "Smol/WebDocumentView.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "751"
-            endingLineNumber = "751"
+            startingLineNumber = "740"
+            endingLineNumber = "740"
             landmarkName = "parse(context:options:)"
             landmarkType = "7">
          </BreakpointContent>
@@ -46,58 +46,10 @@
             filePath = "Smol/WebDocumentView.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "671"
-            endingLineNumber = "671"
+            startingLineNumber = "664"
+            endingLineNumber = "664"
             landmarkName = "parse(context:options:)"
             landmarkType = "7">
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
-            uuid = "F94881E0-6A9F-442C-B707-617F5E65A330"
-            shouldBeEnabled = "No"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "Smol/WebDocumentView.swift"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "564"
-            endingLineNumber = "564"
-            landmarkName = "parse(context:options:)"
-            landmarkType = "7">
-            <Locations>
-               <Location
-                  uuid = "F94881E0-6A9F-442C-B707-617F5E65A330 - e82c40d557e1a95e"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "static Smol.Document.parse(context: Smol.ParsingContext) throws -&gt; Smol.Document"
-                  moduleName = "Smol"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/jason/projects/Smol/Smol/WebDocumentView.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "566"
-                  endingLineNumber = "566"
-                  offsetFromSymbolStart = "260">
-               </Location>
-               <Location
-                  uuid = "F94881E0-6A9F-442C-B707-617F5E65A330 - 25a13e7159293d23"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "closure #1 () throws -&gt; Smol.Node in static Smol.Document.parse(context: Smol.ParsingContext) throws -&gt; Smol.Document"
-                  moduleName = "Smol"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/jason/projects/Smol/Smol/WebDocumentView.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "567"
-                  endingLineNumber = "567"
-                  offsetFromSymbolStart = "28">
-               </Location>
-            </Locations>
          </BreakpointContent>
       </BreakpointProxy>
    </Breakpoints>
