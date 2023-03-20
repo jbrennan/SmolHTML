@@ -179,7 +179,7 @@ struct ImageView: View {
 		AsyncImage(url: urlBuilder(URL.init(string: node.attributeDictionary["src"] ?? "")!), content: { image in
 			image
 				.resizable()
-				.aspectRatio(contentMode: .fill)
+				.aspectRatio(contentMode: .fit)
 				.frame(
 					width: node.attributeDictionary["width"].flatMap(WebSize.init(rawValue:))?.dimension,
 					height: node.attributeDictionary["height"].flatMap(WebSize.init(rawValue:))?.dimension
@@ -228,10 +228,9 @@ struct BlocksView: View {
 				case "blockquote":
 					BlocksView(children: childNode.childNodesSortedIntoBlocks)
 						.padding(.leading, 20)
-				case "ul":
-					ListNodeView(node: childNode)
-				case "hr":
-					Divider()
+				case "ul": ListNodeView(node: childNode, style: .unordered)
+				case "ol": ListNodeView(node: childNode, style: .ordered)
+				case "hr": Divider()
 				case "script": EmptyView()
 				case "br": EmptyView().padding(20)
 				default: Text("unknown block element: <\(childNode.element)>")
@@ -242,12 +241,25 @@ struct BlocksView: View {
 }
 
 struct ListNodeView: View {
+	enum Style {
+		case ordered, unordered
+		
+		func listMarker(for index: Int) -> String {
+			switch self {
+			case .ordered: return "\(index + 1)."
+			case .unordered: return "•"
+			}
+		}
+	}
+	
 	let node: Node
+	let style: Style
+	
 	var body: some View {
 		VStack(alignment: .leading, spacing: 20) {
-			ForEach(node.childNodes, id: \.self) { childNode in
+			ForEach(Array(zip(node.childNodes.indices, node.childNodes)), id: \.1) { (index, childNode) in
 				HStack(alignment: .top, spacing: 20) {
-					Text("•")
+					Text(verbatim: style.listMarker(for: index))
 					BlocksView(children: childNode.childNodesSortedIntoBlocks)
 				}
 			}
