@@ -256,9 +256,9 @@ struct ListNodeView: View {
 	let style: Style
 	
 	var body: some View {
-		VStack(alignment: .leading, spacing: 20) {
+		VStack(alignment: .leading, spacing: 0) {
 			ForEach(Array(zip(node.childNodes.indices, node.childNodes)), id: \.1) { (index, childNode) in
-				HStack(alignment: .top, spacing: 20) {
+				HStack(alignment: .top, spacing: 8) {
 					Text(verbatim: style.listMarker(for: index))
 					BlocksView(children: childNode.childNodesSortedIntoBlocks)
 				}
