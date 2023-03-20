@@ -863,7 +863,8 @@ extension Node {
 		var inlineElements = [Node]()
 		
 		for node in childNodes {
-			if node.isInlineNode {
+			let display = node.styleFromAttributes?.display ?? node.defaultDisplayStyle
+			if display == .inline {
 				inlineElements.append(node)
 			} else {
 				if inlineElements.isEmpty == false {
@@ -886,8 +887,12 @@ extension Node {
 		return nodesToReturn
 	}
 	
+	var defaultDisplayStyle: Style.DisplayStyle {
+		isInlineNode ? .inline : .block
+	}
+	
 	var isInlineNode: Bool {
-		[InternalElement.textRun, "a", "abbr", "acronym", "audio", "b", "bdi", "bdo", "big", "br", "button", "canvas", "cite", "code", "data", "datalist", "del", "dfn", "em", "embed", "i", "iframe", /*"img",*/ "input", "ins", "kbd", "label", "map", "mark", "meter", "noscript", "object", "output", "picture", "progress", "q", "ruby", "s", "samp", "script", "select", "slot", "small", "span", "strong", "sub", "sup", "svg", "template", "textarea", "time", "u", "tt", "var", "video", "wbr"].contains(element)
+		[InternalElement.textRun, "a", "abbr", "acronym", "audio", "b", "bdi", "bdo", "big", "br", "button", "canvas", "cite", "code", "data", "datalist", "del", "dfn", "em", "embed", "i", "iframe", "img", "input", "ins", "kbd", "label", "map", "mark", "meter", "noscript", "object", "output", "picture", "progress", "q", "ruby", "s", "samp", "script", "select", "slot", "small", "span", "strong", "sub", "sup", "svg", "template", "textarea", "time", "u", "tt", "var", "video", "wbr"].contains(element)
 	}
 	
 	var textContent: String? {
@@ -899,5 +904,37 @@ extension Node {
 	
 	func firstDirectChild(named element: String) -> Node? {
 		childNodes.first(where: { $0.element == element })
+	}
+	
+	var styleFromAttributes: Style? {
+		guard let styleAttribute = attributeDictionary["style"] else { return nil }
+		let stylePairs = styleAttribute.components(separatedBy: ";")
+		return Style(
+			rawPairs: .init(
+				uniqueKeysWithValues: stylePairs
+					.map({ $0.components(separatedBy: ":") })
+					.map({ ($0[0].trimmingCharacters(in: .whitespacesAndNewlines), $0[1].trimmingCharacters(in: .whitespacesAndNewlines)) })
+			)
+		)
+	}
+}
+
+struct Style {
+	enum DisplayStyle { case inline, block }
+	
+	var display: DisplayStyle? {
+		guard let displayString = rawValue["display"] else { return nil }
+		switch displayString {
+		case "inline": return .inline
+		case "block": return .block
+		default:
+			return nil
+		}
+	}
+	
+	private let rawValue: [String: String]
+	
+	init(rawPairs: [String: String]) {
+		self.rawValue = rawPairs
 	}
 }
