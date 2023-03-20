@@ -65,7 +65,7 @@ struct WebDocumentView: View {
 						.htmlNode
 						.firstDirectChild(named: "head")?
 						.firstDirectChild(named: "title")?
-						.firstDirectChild(named: Node.textRunElement)?
+						.firstDirectChild(named: Node.InternalElement.textRun)?
 						.textContent ?? "Smol"
 				)
 				.environment(\.font, Font.custom("Times", size: 16))
@@ -166,10 +166,10 @@ struct InlineContentWrappingBlockView: View {
 struct ImageView: View {
 	let node: Node
 	var body: some View {
-		Image(node.attributes["src"] ?? "")
+		Image(node.attributeDictionary["src"] ?? "")
 			.resizable()
 			.aspectRatio(contentMode: .fill)
-			.frame(width: node.attributes["width"].flatMap(WebSize.init(rawValue:))?.dimension)
+			.frame(width: node.attributeDictionary["width"].flatMap(WebSize.init(rawValue:))?.dimension)
 	}
 }
 
@@ -196,11 +196,14 @@ struct BlocksView: View {
 				case "h2":
 					InlineContentWrappingBlockView(node: childNode)
 						.font(Font.custom("Times", size: 28).bold())
+				case "h3":
+					InlineContentWrappingBlockView(node: childNode)
+						.font(Font.custom("Times", size: 24).bold())
 				case "p":
 					InlineContentWrappingBlockView(node: childNode)
 				case "img":
 					ImageView(node: childNode)
-				case "div", "section", "footer", "article", "header", "nav":
+				case "div", "section", "main", "footer", "article", "header", "nav", "aside":
 					BlocksView(children: childNode.childNodesSortedIntoBlocks)
 				case "pre":
 					BlocksView(children: childNode.childNodesSortedIntoBlocks)
@@ -212,6 +215,8 @@ struct BlocksView: View {
 					ListNodeView(node: childNode)
 				case "hr":
 					Divider()
+				case "script": EmptyView()
+				case "br": EmptyView().padding(20)
 				default: Text("unknown block element: <\(childNode.element)>")
 				}
 			}
@@ -249,7 +254,7 @@ struct BodyView: View {
 extension Node {
 	func attributedText(defaultFont: Font) -> AttributedString {
 		switch element {
-		case Node.textRunElement:
+		case InternalElement.textRun:
 			var attributes = AttributeContainer()
 			attributes.font = defaultFont
 			
@@ -280,7 +285,7 @@ extension Node {
 				.mergingAttributes(attributes, mergePolicy: .keepCurrent)
 		case "a":
 			var attributes = AttributeContainer()
-			attributes.link = URL(string: self.attributes["href"] ?? "")
+			attributes.link = URL(string: attributeDictionary["href"] ?? "")
 			attributes.underlineStyle = .single
 			
 			return childNodes
@@ -296,7 +301,7 @@ extension Node {
 struct Token: Equatable, CustomDebugStringConvertible {
 	
 	enum Kind: Equatable {
-		case openAngleBracket, closeAngleBracket, forwardSlash, equals, hyphen, singleQuote, doubleQuote, text, whitespace, bang
+		case text, openAngleBracket, closeAngleBracket, forwardSlash, equals, hyphen, singleQuote, doubleQuote, whitespace, bang
 	}
 	
 	let kind: Kind
@@ -355,7 +360,7 @@ class ScanningCursor {
 }
 
 class Tokenizer {
-	let cursor: ScanningCursor
+	private let cursor: ScanningCursor
 	var scannedTokens = [Token]()
 	
 	init(programText: String) {
@@ -395,16 +400,6 @@ class Tokenizer {
 			cursor.advance()
 		}
 		scannedTokens.append(Token(kind: .text, body: body))
-	}
-	
-	private enum TokenizerError: Error {
-		case unknownToken(Character)
-	}
-}
-
-private extension Character {
-	var isIdentifierCharacter: Bool {
-		isLetter || isWholeNumber
 	}
 }
 
@@ -517,7 +512,7 @@ class ParsingContext {
 		})
 	}
 	
-	func advance(when predicate: (Token) -> Bool, skipWhitespaceTokens: Bool = true) -> Bool {
+	private func advance(when predicate: (Token) -> Bool, skipWhitespaceTokens: Bool = true) -> Bool {
 		
 		var skippedWhitespaceCount = 0
 		if skipWhitespaceTokens {
@@ -576,8 +571,10 @@ struct Document: Hashable, Parsable {
 
 struct Node: Hashable, Parsable {
 	
-	static let textRunElement = "__textRun"
-	private static let commentElement = "__comment"
+	struct InternalElement {
+		static let textRun = "__textRun"
+		static let comment = "__comment"
+	}
 	
 	enum Content: Hashable {
 		case text(String)
@@ -587,7 +584,7 @@ struct Node: Hashable, Parsable {
 	
 	let element: String
 	let content: Content
-	let attributes: [String: String]
+	let attributes: [Attribute]
 	
 	// todo: this id is breaking all the tests
 //	let id = UUID()
@@ -598,7 +595,6 @@ struct Node: Hashable, Parsable {
 		/// This error will probably get thrown a lot, just to signify that parsing a child failed.
 		/// todo: It's probably wasteful to do it this way!
 		case openingTagWasActuallyClosing(tagName: String)
-		
 		case closingTagWasActuallyOpening(tagName: String)
 		case didNotFindAnyText
 	}
@@ -613,11 +609,11 @@ struct Node: Hashable, Parsable {
 		
 		
 		if startTag.element.lowercased() == "doctype" {
-			return Node(element: "doctype", content: .voidNode, attributes: startTag.attributeDictionary)
+			return Node(element: "doctype", content: .voidNode, attributes: startTag.attributes)
 		}
 		
 		if startTag.isVoidElement {
-			return Node(element: startTag.element, content: .voidNode, attributes: startTag.attributeDictionary)
+			return Node(element: startTag.element, content: .voidNode, attributes: startTag.attributes)
 		}
 		
 		let shouldPreserveWhitespace = startTag.element == "pre" || options?.preservesWhitespace ?? false
@@ -661,39 +657,35 @@ struct Node: Hashable, Parsable {
 //						throw NodeParseError.didNotFindAnyText
 //					}
 					
-					return Node(element: Node.textRunElement, content: .text(contentRun), attributes: [:])
+					return Node(element: InternalElement.textRun, content: .text(contentRun), attributes: [])
 				},
 				{
-					try context.consumeBetween(
-						leftToken: .openAngleBracket,
-						content: {
-							try context.consume(tokenKind: .bang, feedback: "Expected comment to begin with a bang")
-							try context.consume(tokenKind: .hyphen, feedback: "Expected comment to have a hyphen after the bang")
-							try context.consume(tokenKind: .hyphen, feedback: "Expected comment to have two hyphens after the bang")
+					try context.consumeBetween(leftToken: .openAngleBracket, rightToken: .closeAngleBracket) {
+						try context.consume(tokenKind: .bang, feedback: "Expected comment to begin with a bang")
+						try context.consume(tokenKind: .hyphen, feedback: "Expected comment to have a hyphen after the bang")
+						try context.consume(tokenKind: .hyphen, feedback: "Expected comment to have two hyphens after the bang")
+						
+						var done = false
+						while done == false {
 							
-							var done = false
-							while done == false {
+							if context.currentToken.kind == .hyphen && context.nextToken.kind == .hyphen && context.nextNextToken.kind == .closeAngleBracket {
 								
-								if context.currentToken.kind == .hyphen && context.nextToken.kind == .hyphen && context.nextNextToken.kind == .closeAngleBracket {
-
-									try context.consume(tokenKind: .hyphen, feedback: "-")
-									try context.consume(tokenKind: .hyphen, feedback: "-")
-									done = true
-								} else {
-									try context.consume(where: { _ in true }, skipWhitespaceTokens: false, feedback: "munch munch")
-								}
+								try context.consume(tokenKind: .hyphen, feedback: "-")
+								try context.consume(tokenKind: .hyphen, feedback: "-")
+								done = true
+							} else {
+								try context.consume(where: { _ in true }, skipWhitespaceTokens: false, feedback: "munch munch")
 							}
-							
-							return Node(element: Node.commentElement, content: .voidNode, attributes: [:])
-						},
-						rightToken: .closeAngleBracket
-					)
+						}
+						
+						return Node(element: InternalElement.comment, content: .voidNode, attributes: [])
+					}
 				}
 			])
 		})
 			.filter {
-				if $0.element == Node.commentElement { return false }
-				if $0.element != Node.textRunElement { return true }
+				if $0.element == InternalElement.comment { return false }
+				if $0.element != InternalElement.textRun { return true }
 				
 				// filter out empty text run nodes
 				return $0.textContent?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
@@ -711,7 +703,7 @@ struct Node: Hashable, Parsable {
 		return .init(
 			element: startTag.element,
 			content: .childNodes(children),
-			attributes: startTag.attributeDictionary
+			attributes: startTag.attributes
 		)
 	}
 }
@@ -729,34 +721,26 @@ struct Tag: Parsable {
 		Tag.voidElements.contains(element)
 	}
 	
-	var attributeDictionary: [String: String] {
-		Dictionary(uniqueKeysWithValues: attributes.map({ ($0.key, $0.value) }))
-	}
-	
 	static func parse(context: ParsingContext, options: ParsingOptions?) throws -> Tag {
-		try context.consumeBetween(
-			leftToken: .openAngleBracket,
-			content: {
-				let slashToken = try? context.consume(tokenKind: .forwardSlash, feedback: "Expected a `/`")
-				let _ = try? context.consume(tokenKind: .bang, feedback: "Expected a `!`")
-				let identifier = try context.consume(tokenKind: .text, feedback: "Expected a tag name")
-				
-				let attributes = context.untilThrowOrEndOfTokensReached(perform: {
-					try context.attempt(action: {
-						try Attribute.parse(context: context, options: options)
-					})
+		try context.consumeBetween(leftToken: .openAngleBracket, rightToken: .closeAngleBracket) {
+			let slashToken = try? context.consume(tokenKind: .forwardSlash, feedback: "Expected a `/`")
+			let _ = try? context.consume(tokenKind: .bang, feedback: "Expected a `!`")
+			let identifier = try context.consume(tokenKind: .text, feedback: "Expected a tag name")
+			
+			let attributes = context.untilThrowOrEndOfTokensReached(perform: {
+				try context.attempt(action: {
+					try Attribute.parse(context: context, options: options)
 				})
-				
-				// If there's a trailing slash (eg <img />), consume it but ignore it. this is invalid html
-				_ = try? context.consume(tokenKind: .forwardSlash, feedback: "Expected a trailing `/`")
-				return Tag(element: identifier.body, isEnd: slashToken != nil, attributes: attributes)
-			},
-			rightToken: .closeAngleBracket
-		)
+			})
+			
+			// If there's a trailing slash (eg <img />), consume it but ignore it. this is invalid html
+			_ = try? context.consume(tokenKind: .forwardSlash, feedback: "Expected a trailing `/`")
+			return Tag(element: identifier.body, isEnd: slashToken != nil, attributes: attributes)
+		}
 	}
 }
 
-struct Attribute: Parsable {
+struct Attribute: Hashable, Parsable {
 	let key: String
 	let value: String
 	
@@ -774,34 +758,26 @@ struct Attribute: Parsable {
 		
 		let value = try context.choose(from: [
 			{
-				try context.consumeBetween(
-					leftToken: .doubleQuote,
-					content: {
-						let textContents = context.untilThrowOrEndOfTokensReached {
-							try context.consume(where: { $0.kind != .doubleQuote }, skipWhitespaceTokens: false, feedback: "Expected a non `\"` token")
-						}
-						
-						return textContents
-							.map(\.body)
-							.joined()
-					},
-					rightToken: .doubleQuote
-				)
+				try context.consumeBetween(leftToken: .doubleQuote, rightToken: .doubleQuote) {
+					let textContents = context.untilThrowOrEndOfTokensReached {
+						try context.consume(where: { $0.kind != .doubleQuote }, skipWhitespaceTokens: false, feedback: "Expected a non `\"` token")
+					}
+					
+					return textContents
+						.map(\.body)
+						.joined()
+				}
 			},
 			{
-				try context.consumeBetween(
-					leftToken: .singleQuote,
-					content: {
-						let textContents = context.untilThrowOrEndOfTokensReached {
-							try context.consume(where: { $0.kind != .singleQuote }, skipWhitespaceTokens: false, feedback: "Expected a non `'` token")
-						}
-						
-						return textContents
-							.map(\.body)
-							.joined()
-					},
-					rightToken: .singleQuote
-				)
+				try context.consumeBetween(leftToken: .singleQuote, rightToken: .singleQuote) {
+					let textContents = context.untilThrowOrEndOfTokensReached {
+						try context.consume(where: { $0.kind != .singleQuote }, skipWhitespaceTokens: false, feedback: "Expected a non `'` token")
+					}
+					
+					return textContents
+						.map(\.body)
+						.joined()
+				}
 			},
 			{
 				let textContents = context.untilThrowOrEndOfTokensReached {
@@ -829,7 +805,7 @@ struct Attribute: Parsable {
 
 extension ParsingContext {
 	@discardableResult
-	func consumeBetween<ContentType>(leftToken: Token.Kind, content: () throws -> ContentType, rightToken: Token.Kind) throws -> ContentType {
+	func consumeBetween<ContentType>(leftToken: Token.Kind, rightToken: Token.Kind, content: () throws -> ContentType) throws -> ContentType {
 		try consume(tokenKind: leftToken, feedback: "Expected a \(leftToken)")
 		let consumedContent = try content()
 		try consume(tokenKind: rightToken, feedback: "Expected a \(rightToken)")
@@ -839,6 +815,10 @@ extension ParsingContext {
 }
 
 extension Node {
+	var attributeDictionary: [String: String] {
+		Dictionary(uniqueKeysWithValues: attributes.map({ ($0.key, $0.value) }))
+	}
+	
 	var childNodes: [Node] {
 		switch content {
 		case .voidNode, .text: return []
@@ -856,7 +836,7 @@ extension Node {
 			} else {
 				if inlineElements.isEmpty == false {
 					// make a fake block element that has all these as children
-					let wrapper = Node(element: "p", content: .childNodes(inlineElements), attributes: [:])
+					let wrapper = Node(element: "p", content: .childNodes(inlineElements), attributes: [])
 					// and append it to our list to return
 					nodesToReturn.append(wrapper)
 					// then, empty the inlineElements list
@@ -867,7 +847,7 @@ extension Node {
 		}
 		if inlineElements.isEmpty == false {
 			// make a fake block element that has all these as children
-			let wrapper = Node(element: "p", content: .childNodes(inlineElements), attributes: [:])
+			let wrapper = Node(element: "p", content: .childNodes(inlineElements), attributes: [])
 			// and append it to our list to return
 			nodesToReturn.append(wrapper)
 		}
@@ -875,7 +855,7 @@ extension Node {
 	}
 	
 	var isInlineNode: Bool {
-		[Node.textRunElement, "a", "abbr", "acronym", "audio", "b", "bdi", "bdo", "big", "br", "button", "canvas", "cite", "code", "data", "datalist", "del", "dfn", "em", "embed", "i", "iframe", "img", "input", "ins", "kbd", "label", "map", "mark", "meter", "noscript", "object", "output", "picture", "progress", "q", "ruby", "s", "samp", "script", "select", "slot", "small", "span", "strong", "sub", "sup", "svg", "template", "textarea", "time", "u", "tt", "var", "video", "wbr"].contains(element)
+		[InternalElement.textRun, "a", "abbr", "acronym", "audio", "b", "bdi", "bdo", "big", "br", "button", "canvas", "cite", "code", "data", "datalist", "del", "dfn", "em", "embed", "i", "iframe", "img", "input", "ins", "kbd", "label", "map", "mark", "meter", "noscript", "object", "output", "picture", "progress", "q", "ruby", "s", "samp", "script", "select", "slot", "small", "span", "strong", "sub", "sup", "svg", "template", "textarea", "time", "u", "tt", "var", "video", "wbr"].contains(element)
 	}
 	
 	var textContent: String? {
