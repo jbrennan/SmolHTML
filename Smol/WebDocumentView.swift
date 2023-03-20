@@ -31,7 +31,7 @@ struct BrowserView: View {
 						guard let url = URL(string: address) else {
 							return
 						}
-						controller.loadPage(at: url)
+						controller.loadPage(at: fullURL(forURLToLoad: url))
 					}
 					.textFieldStyle(RoundedBorderTextFieldStyle())
 			}
@@ -40,9 +40,23 @@ struct BrowserView: View {
 			WebDocumentView(controller: controller)
 				.background(.white)
 				.environment(\.openURL, .init(handler: { url in
-					controller.loadPage(at: url)
+					if let scheme = url.scheme, scheme != "http" || scheme != "https" {
+						return .systemAction
+					}
+					controller.loadPage(at: fullURL(forURLToLoad: url))
 					return .handled
 				}))
+		}
+		.environment(\.urlBuilder, fullURL(forURLToLoad:))
+	}
+	
+	private func fullURL(forURLToLoad urlToLoad: URL) -> URL {
+		if urlToLoad.host != nil { return urlToLoad }
+		
+		switch controller.state {
+		case .failed, .notLoaded: return urlToLoad
+		case .loaded(_, let loadedURL):
+			return URL(string: urlToLoad.path, relativeTo: loadedURL.deletingLastPathComponent()) ?? urlToLoad
 		}
 	}
 }
@@ -73,6 +87,18 @@ struct WebDocumentView: View {
 	}
 }
 
+private struct URLBuilderKey: EnvironmentKey {
+	static let defaultValue: (URL) -> URL = { $0 }
+}
+
+extension EnvironmentValues {
+	/// A function that takes a (potentially "relative") web url to load, and fleshes it out to a full url that includes a host.
+	var urlBuilder: (URL) -> URL {
+		get { self[URLBuilderKey.self] }
+		set { self[URLBuilderKey.self] = newValue }
+	}
+}
+
 class PageController: ObservableObject {
 	
 	enum State {
@@ -88,27 +114,9 @@ class PageController: ObservableObject {
 	@Published var state = State.notLoaded
 	private var previousDocuments: [(Document, URL)] = []
 	
-	private var currentlyLoadedURL: URL? {
-		switch state {
-		case .notLoaded, .failed: return nil
-		case .loaded(_, let url): return url
-		}
-	}
-	
 	func loadPage(at url: URL) {
 		Task {
-			let fullURL: URL
-			if url.host != nil {
-				fullURL = url
-			} else {
-				guard let previousURL = currentlyLoadedURL else {
-					print("Could not load url \(url) because it didn't have a host and we don't have a previously loaded host either.")
-					self.state = .failed(LoadingError.failedToLoad(url))
-					return
-				}
-				fullURL = URL(string: url.path, relativeTo: previousURL)!
-			}
-			let (data, response) = try await URLSession.shared.data(from: fullURL)
+			let (data, response) = try await URLSession.shared.data(from: url)
 			let htmlString = String(data: data, encoding: .utf8) ?? ""
 			let tokenizer = Tokenizer(programText: htmlString)
 			let context = try ParsingContext(tokens: tokenizer.scanAllTokens())
@@ -116,7 +124,7 @@ class PageController: ObservableObject {
 			await MainActor.run {
 				do {
 					let oldState = state
-					state = .loaded(try Document.parse(context: context, options: nil), response.url ?? fullURL)
+					state = .loaded(try Document.parse(context: context, options: nil), response.url ?? url)
 					switch oldState {
 					case .failed, .notLoaded: break
 					case .loaded(let oldDocument, let oldURL):
@@ -165,11 +173,20 @@ struct InlineContentWrappingBlockView: View {
 
 struct ImageView: View {
 	let node: Node
+	@Environment(\.urlBuilder) var urlBuilder
+	
 	var body: some View {
-		Image(node.attributeDictionary["src"] ?? "")
-			.resizable()
-			.aspectRatio(contentMode: .fill)
-			.frame(width: node.attributeDictionary["width"].flatMap(WebSize.init(rawValue:))?.dimension)
+		AsyncImage(url: urlBuilder(URL.init(string: node.attributeDictionary["src"] ?? "")!), content: { image in
+			image
+				.resizable()
+				.aspectRatio(contentMode: .fill)
+				.frame(
+					width: node.attributeDictionary["width"].flatMap(WebSize.init(rawValue:))?.dimension,
+					height: node.attributeDictionary["height"].flatMap(WebSize.init(rawValue:))?.dimension
+				)
+		}, placeholder: {
+			Color(white: 0.9).cornerRadius(4)
+		})
 	}
 }
 
@@ -242,8 +259,11 @@ struct BodyView: View {
 	let bodyNode: Node
 	var body: some View {
 		ScrollView {
-			BlocksView(children: bodyNode.childNodesSortedIntoBlocks)
-				.font(Font.custom("Times", size: 16))
+			HStack(spacing: 0) {
+				BlocksView(children: bodyNode.childNodesSortedIntoBlocks)
+					.font(Font.custom("Times", size: 16))
+				Spacer()
+			}
 			.padding(20)
 		}
 		.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -855,7 +875,7 @@ extension Node {
 	}
 	
 	var isInlineNode: Bool {
-		[InternalElement.textRun, "a", "abbr", "acronym", "audio", "b", "bdi", "bdo", "big", "br", "button", "canvas", "cite", "code", "data", "datalist", "del", "dfn", "em", "embed", "i", "iframe", "img", "input", "ins", "kbd", "label", "map", "mark", "meter", "noscript", "object", "output", "picture", "progress", "q", "ruby", "s", "samp", "script", "select", "slot", "small", "span", "strong", "sub", "sup", "svg", "template", "textarea", "time", "u", "tt", "var", "video", "wbr"].contains(element)
+		[InternalElement.textRun, "a", "abbr", "acronym", "audio", "b", "bdi", "bdo", "big", "br", "button", "canvas", "cite", "code", "data", "datalist", "del", "dfn", "em", "embed", "i", "iframe", /*"img",*/ "input", "ins", "kbd", "label", "map", "mark", "meter", "noscript", "object", "output", "picture", "progress", "q", "ruby", "s", "samp", "script", "select", "slot", "small", "span", "strong", "sub", "sup", "svg", "template", "textarea", "time", "u", "tt", "var", "video", "wbr"].contains(element)
 	}
 	
 	var textContent: String? {
