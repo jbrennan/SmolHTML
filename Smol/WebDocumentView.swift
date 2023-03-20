@@ -40,7 +40,7 @@ struct BrowserView: View {
 			WebDocumentView(controller: controller)
 				.background(.white)
 				.environment(\.openURL, .init(handler: { url in
-					if let scheme = url.scheme, scheme != "http" || scheme != "https" {
+					if let scheme = url.scheme, (scheme == "http" || scheme == "https") == false {
 						return .systemAction
 					}
 					controller.loadPage(at: fullURL(forURLToLoad: url))
