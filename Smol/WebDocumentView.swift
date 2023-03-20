@@ -274,6 +274,7 @@ struct BodyView: View {
 			HStack(spacing: 0) {
 				BlocksView(children: bodyNode.childNodesSortedIntoBlocks)
 					.font(Font.custom("Times", size: 16))
+					.frame(maxWidth: bodyNode.styleFromAttributes?.maxWidth)
 				Spacer()
 			}
 			.padding(20)
@@ -912,8 +913,12 @@ extension Node {
 		return Style(
 			rawPairs: .init(
 				uniqueKeysWithValues: stylePairs
-					.map({ $0.components(separatedBy: ":") })
-					.map({ ($0[0].trimmingCharacters(in: .whitespacesAndNewlines), $0[1].trimmingCharacters(in: .whitespacesAndNewlines)) })
+					.map { $0.components(separatedBy: ":") }
+					.map { ($0.first?.trimmingCharacters(in: .whitespacesAndNewlines), $0.last?.trimmingCharacters(in: .whitespacesAndNewlines)) }
+					.compactMap {
+						guard let key = $0, let value = $1 else { return nil }
+						return (key, value)
+					}
 			)
 		)
 	}
@@ -930,6 +935,11 @@ struct Style {
 		default:
 			return nil
 		}
+	}
+	
+	var maxWidth: CGFloat? {
+		guard let maxWidth = rawValue["max-width"] else { return nil }
+		return WebSize(rawValue: maxWidth).dimension
 	}
 	
 	private let rawValue: [String: String]
