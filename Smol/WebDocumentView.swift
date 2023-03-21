@@ -15,22 +15,16 @@ struct BrowserView: View {
 		VStack(spacing: 0) {
 			HStack {
 				HStack(spacing: 0) {
-					Button(action: {
-						controller.goBack()
-					}) {
+					Button(action: { controller.goBack() }) {
 						Image(systemName: "arrowtriangle.left.fill")
-					}
-					Button(action: {
-						controller.goForward()
-					}) {
+					}.disabled(controller.canGoBack == false)
+					Button(action: { controller.goForward() }) {
 						Image(systemName: "arrowtriangle.right.fill")
-					}
+					}.disabled(controller.canGoForward == false)
 				}
 				TextField("Address", text: $address)
 					.onSubmit {
-						guard let url = URL(string: address) else {
-							return
-						}
+						guard let url = URL(string: address) else { return }
 						controller.loadPage(at: fullURL(forURLToLoad: url))
 					}
 					.textFieldStyle(RoundedBorderTextFieldStyle())
@@ -112,7 +106,11 @@ class PageController: ObservableObject {
 	}
 	
 	@Published var state = State.notLoaded
-	private var previousDocuments: [(Document, URL)] = []
+	private var backStack: [(Document, URL)] = []
+	private var forwardStack: [(Document, URL)] = []
+	
+	var canGoBack: Bool { backStack.isEmpty == false }
+	var canGoForward: Bool { forwardStack.isEmpty == false }
 	
 	func loadPage(at url: URL) {
 		Task {
@@ -123,12 +121,11 @@ class PageController: ObservableObject {
 			
 			await MainActor.run {
 				do {
-					let oldState = state
+					let oldCurrentlyLoadedDocument = currentlyLoadedDocument
 					state = .loaded(try Document.parse(context: context, options: nil), response.url ?? url)
-					switch oldState {
-					case .failed, .notLoaded: break
-					case .loaded(let oldDocument, let oldURL):
-						previousDocuments.append((oldDocument, oldURL))
+					if let oldCurrentlyLoadedDocument {
+						backStack.append(oldCurrentlyLoadedDocument)
+						forwardStack = []
 					}
 				} catch {
 					print("error parsing document: \(error)")
@@ -138,11 +135,26 @@ class PageController: ObservableObject {
 		}
 	}
 	
-	func goBack() {
-		guard let (previousDocument, previousURL) = previousDocuments.popLast() else { return }
-		state = .loaded(previousDocument, previousURL)
+	private var currentlyLoadedDocument: (Document, URL)? {
+		switch state {
+		case .notLoaded, .failed: return nil
+		case let .loaded(document, url): return (document, url)
+		}
 	}
-	func goForward() {}
+	
+	func goBack() {
+		guard let currentlyLoadedDocument else { return }
+		guard let (previousDocument, previousURL) = backStack.popLast() else { return }
+		state = .loaded(previousDocument, previousURL)
+		forwardStack.append(currentlyLoadedDocument)
+	}
+	
+	func goForward() {
+		guard let currentlyLoadedDocument else { return }
+		guard let (nextDocument, nextURL) = forwardStack.popLast() else { return }
+		state = .loaded(nextDocument, nextURL)
+		backStack.append(currentlyLoadedDocument)
+	}
 }
 
 let pageController = PageController()
