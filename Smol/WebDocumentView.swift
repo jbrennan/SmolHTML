@@ -9,7 +9,7 @@ import SwiftUI
 
 struct BrowserView: View {
 	@ObservedObject var controller: PageController
-	@State var address: String = "https://nearthespeedoflight.com/smol.html"
+	@FocusState private var addressIsFocused: Bool
 	
 	var body: some View {
 		VStack(spacing: 0) {
@@ -22,12 +22,14 @@ struct BrowserView: View {
 						Image(systemName: "arrowtriangle.right.fill")
 					}.disabled(controller.canGoForward == false)
 				}
-				TextField("Address", text: $address)
+				TextField("Address", text: $controller.address)
 					.onSubmit {
-						guard let url = URL(string: address) else { return }
+						addressIsFocused = false
+						guard let url = URL(string: controller.address) else { return }
 						controller.loadPage(at: fullURL(forURLToLoad: url))
 					}
 					.textFieldStyle(RoundedBorderTextFieldStyle())
+					.focused($addressIsFocused)
 			}
 			.padding()
 			Divider()
@@ -38,6 +40,7 @@ struct BrowserView: View {
 						return .systemAction
 					}
 					controller.loadPage(at: fullURL(forURLToLoad: url))
+					addressIsFocused = false
 					return .handled
 				}))
 		}
@@ -105,7 +108,15 @@ class PageController: ObservableObject {
 		case failedToLoad(URL)
 	}
 	
-	@Published var state = State.notLoaded
+	@Published var state = State.notLoaded {
+		didSet {
+			if let currentlyLoadedDocument {
+				address = currentlyLoadedDocument.1.absoluteString
+			}
+		}
+	}
+	var address = "https://nearthespeedoflight.com/smol.html"
+	
 	private var backStack: [(Document, URL)] = []
 	private var forwardStack: [(Document, URL)] = []
 	
