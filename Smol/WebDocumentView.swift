@@ -36,7 +36,7 @@ struct BrowserView: View {
 			WebDocumentView(controller: controller)
 				.background(.white)
 				.environment(\.openURL, .init(handler: { url in
-					if let scheme = url.scheme, (scheme == "http" || scheme == "https") == false {
+					if let scheme = url.scheme, scheme != "http" && scheme != "https" {
 						return .systemAction
 					}
 					controller.loadPage(at: fullURL(forURLToLoad: url))
@@ -772,15 +772,13 @@ struct Node: Hashable, Parsable, Identifiable {
 
 struct Tag: Parsable {
 	
-	/// A "void element" is one that has no end tag and no children.
-	static let voidElements = ["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"]
-	
 	let element: String
 	let isEnd: Bool
 	let attributes: [Attribute]
 	
+	/// A "void element" is one that has no end tag and no children.
 	var isVoidElement: Bool {
-		Tag.voidElements.contains(element)
+		["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"].contains(element)
 	}
 	
 	static func parse(context: ParsingContext, options: ParsingOptions?) throws -> Tag {

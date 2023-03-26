@@ -35,6 +35,7 @@
 		960E8C9A299545A80086123C /* SmolTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SmolTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		960E8C9E299545A80086123C /* SmolTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmolTests.swift; sourceTree = "<group>"; };
 		960E8CB92995468D0086123C /* index.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = index.html; sourceTree = "<group>"; };
+		969A82E029BCCB2A0095D29D /* index.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = index.md; sourceTree = "<group>"; };
 		96A66A7E29B3D69B00796244 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -78,10 +79,11 @@
 			isa = PBXGroup;
 			children = (
 				96A66A7E29B3D69B00796244 /* Info.plist */,
+				960E8C95299545A80086123C /* Smol.entitlements */,
 				960E8C8C299545A80086123C /* SmolApp.swift */,
 				960E8C8E299545A80086123C /* WebDocumentView.swift */,
+				969A82E029BCCB2A0095D29D /* index.md */,
 				960E8C90299545A80086123C /* Assets.xcassets */,
-				960E8C95299545A80086123C /* Smol.entitlements */,
 				960E8CB92995468D0086123C /* index.html */,
 				960E8C92299545A80086123C /* Preview Content */,
 			);
