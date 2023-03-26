@@ -189,7 +189,7 @@ struct InlineContentWrappingBlockView: View {
 				.childNodes
 				.map { $0.attributedText(defaultFont: font ?? Font.custom("Times", size: 16)) }
 				.reduce(AttributedString(), +)
-		)
+		).fixedSize(horizontal: false, vertical: true)
 	}
 }
 
@@ -255,7 +255,7 @@ struct BlocksView: View {
 				case "ol": ListNodeView(node: childNode, style: .ordered)
 				case "hr": Divider()
 				case "script": EmptyView()
-				case "br": EmptyView().padding(20)
+				case "br": Color.clear.padding(20)
 				default: Text("unknown block element: <\(childNode.element)>")
 				}
 			}
@@ -350,6 +350,13 @@ extension Node {
 				.mergingAttributes(attributes, mergePolicy: .keepCurrent)
 		default:
 			return AttributedString("Unknown inline element <\(element)>")
+			var attributes = AttributeContainer()
+			attributes.font = defaultFont
+			
+			return childNodes
+				.map { $0.attributedText(defaultFont: defaultFont) }
+				.reduce(AttributedString(), +)
+				.mergingAttributes(attributes, mergePolicy: .keepCurrent)
 		}
 	}
 }
@@ -625,7 +632,7 @@ struct Document: Hashable, Parsable {
 	}
 }
 
-struct Node: Hashable, Parsable {
+struct Node: Hashable, Parsable, Identifiable {
 	
 	struct InternalElement {
 		static let textRun = "__textRun"
@@ -643,7 +650,7 @@ struct Node: Hashable, Parsable {
 	let attributes: [Attribute]
 	
 	// todo: this id is breaking all the tests
-//	let id = UUID()
+	let id = UUID()
 	
 	enum NodeParseError: Error {
 		case closingTagDidNotMatchOpeningTag(opening: String, closing: String)
