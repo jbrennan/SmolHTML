@@ -349,7 +349,6 @@ extension Node {
 				.reduce(AttributedString(), +)
 				.mergingAttributes(attributes, mergePolicy: .keepCurrent)
 		default:
-			return AttributedString("Unknown inline element <\(element)>")
 			var attributes = AttributeContainer()
 			attributes.font = defaultFont
 			
