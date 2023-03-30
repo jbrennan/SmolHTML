@@ -11,7 +11,7 @@ import SwiftUI
 struct SmolApp: App {
     var body: some Scene {
         WindowGroup {
-			BrowserView(controller: pageController)
+			BrowserView(controller: PageController())
         }
     }
 }

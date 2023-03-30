@@ -79,7 +79,7 @@ struct WebDocumentView: View {
 						.firstDirectChild(named: Node.InternalElement.textRun)?
 						.textContent ?? "Smol"
 				)
-				.environment(\.font, Font.custom("Times", size: 16))
+				.font(Font.custom("Times", size: 16))
 		}
 	}
 }
@@ -115,7 +115,7 @@ class PageController: ObservableObject {
 			}
 		}
 	}
-	var address = "https://nearthespeedoflight.com/smol.html"
+	var address = "https://nearthespeedoflight.com/smol2.html"
 	
 	private var backStack: [(Document, URL)] = []
 	private var forwardStack: [(Document, URL)] = []
@@ -125,23 +125,27 @@ class PageController: ObservableObject {
 	
 	func loadPage(at url: URL) {
 		Task {
-			let (data, response) = try await URLSession.shared.data(from: url)
-			let htmlString = String(data: data, encoding: .utf8) ?? ""
-			let tokenizer = Tokenizer(programText: htmlString)
-			let context = try ParsingContext(tokens: tokenizer.scanAllTokens())
+			let newState: State
+			do {
+				let (data, response) = try await URLSession.shared.data(from: url)
+				
+				if let currentlyLoadedDocument {
+					backStack.append(currentlyLoadedDocument)
+					forwardStack = []
+				}
+				
+				let htmlString = String(data: data, encoding: .utf8) ?? ""
+				let tokenizer = Tokenizer(programText: htmlString)
+				let context = try ParsingContext(tokens: tokenizer.scanAllTokens())
+				
+				newState = .loaded(try Document.parse(context: context, options: nil), response.url ?? url)
+			} catch {
+				print("error loading page: \(error)")
+				newState = .failed(error)
+			}
 			
 			await MainActor.run {
-				do {
-					let oldCurrentlyLoadedDocument = currentlyLoadedDocument
-					state = .loaded(try Document.parse(context: context, options: nil), response.url ?? url)
-					if let oldCurrentlyLoadedDocument {
-						backStack.append(oldCurrentlyLoadedDocument)
-						forwardStack = []
-					}
-				} catch {
-					print("error parsing document: \(error)")
-					state = .failed(error)
-				}
+				state = newState
 			}
 		}
 	}
@@ -154,26 +158,20 @@ class PageController: ObservableObject {
 	}
 	
 	func goBack() {
-		guard let currentlyLoadedDocument else { return }
 		guard let (previousDocument, previousURL) = backStack.popLast() else { return }
+		if let currentlyLoadedDocument {
+			forwardStack.append(currentlyLoadedDocument)
+		}
 		state = .loaded(previousDocument, previousURL)
-		forwardStack.append(currentlyLoadedDocument)
 	}
 	
 	func goForward() {
-		guard let currentlyLoadedDocument else { return }
 		guard let (nextDocument, nextURL) = forwardStack.popLast() else { return }
+		if let currentlyLoadedDocument {
+			backStack.append(currentlyLoadedDocument)
+		}
 		state = .loaded(nextDocument, nextURL)
-		backStack.append(currentlyLoadedDocument)
 	}
-}
-
-let pageController = PageController()
-
-struct BrowserView_Previews: PreviewProvider {
-    static var previews: some View {
-		BrowserView(controller: pageController)
-    }
 }
 
 /// This view works as a generic "block" / "box" container for inline content.
@@ -189,7 +187,9 @@ struct InlineContentWrappingBlockView: View {
 				.childNodes
 				.map { $0.attributedText(defaultFont: font ?? Font.custom("Times", size: 16)) }
 				.reduce(AttributedString(), +)
-		).fixedSize(horizontal: false, vertical: true)
+		)
+		.lineSpacing(4)
+		.fixedSize(horizontal: false, vertical: true)
 	}
 }
 
@@ -247,7 +247,7 @@ struct BlocksView: View {
 					BlocksView(children: childNode.childNodesSortedIntoBlocks)
 				case "pre":
 					BlocksView(children: childNode.childNodesSortedIntoBlocks)
-						.font(font?.monospaced())
+						.font(Font.system(size: 13, design: .monospaced))
 				case "blockquote":
 					BlocksView(children: childNode.childNodesSortedIntoBlocks)
 						.padding(.leading, 20)
@@ -279,9 +279,9 @@ struct ListNodeView: View {
 	let style: Style
 	
 	var body: some View {
-		VStack(alignment: .leading, spacing: 0) {
+		VStack(alignment: .leading, spacing: 8) {
 			ForEach(Array(zip(node.childNodes.indices, node.childNodes)), id: \.1) { (index, childNode) in
-				HStack(alignment: .top, spacing: 8) {
+				HStack(alignment: .firstTextBaseline, spacing: 8) {
 					Text(verbatim: style.listMarker(for: index))
 					BlocksView(children: childNode.childNodesSortedIntoBlocks)
 				}
@@ -296,7 +296,6 @@ struct BodyView: View {
 		ScrollView {
 			HStack(spacing: 0) {
 				BlocksView(children: bodyNode.childNodesSortedIntoBlocks)
-					.font(Font.custom("Times", size: 16))
 					.frame(maxWidth: bodyNode.styleFromAttributes?.maxWidth)
 				Spacer()
 			}
@@ -333,10 +332,11 @@ extension Node {
 				.mergingAttributes(attributes, mergePolicy: .keepCurrent)
 		case "code":
 			var attributes = AttributeContainer()
-			attributes.font = defaultFont.monospaced()
+			let monospaced = Font.system(size: 13, design: .monospaced)
+			attributes.font = monospaced
 			
 			return childNodes
-				.map { $0.attributedText(defaultFont: defaultFont.monospaced()) }
+				.map { $0.attributedText(defaultFont: monospaced) }
 				.reduce(AttributedString(), +)
 				.mergingAttributes(attributes, mergePolicy: .keepCurrent)
 		case "a":
@@ -692,32 +692,17 @@ struct Node: Hashable, Parsable, Identifiable {
 					}
 					
 					// todo: this does not follow the exact html rules, but good enough for now
-					let contentRun: String
-					if shouldPreserveWhitespace {
-						contentRun = textContents
-							.map(\.body)
-							.joined()
-							.replacingOccurrences(of: "&#x000A;", with: "")
-							.replacingOccurrences(of: "&lt;", with: "<")
-							.replacingOccurrences(of: "&gt;", with: ">")
-							.replacingOccurrences(of: "&quot;", with: "\"")
-							.replacingOccurrences(of: "&amp;", with: "&")
-					} else {
-						contentRun = textContents
-							.map(\.body)
-							.joined()
-							.replacingOccurrences(of: "&#x000A;", with: "")
-							.replacingOccurrences(of: "\n", with: " ")
-							.replacingOccurrences(of: "\t", with: " ")
-							.replacingOccurrences(of: "&lt;", with: "<")
-							.replacingOccurrences(of: "&gt;", with: ">")
-							.replacingOccurrences(of: "&quot;", with: "\"")
-							.replacingOccurrences(of: "&amp;", with: "&")
-					}
-					
-//					guard contentRun.isEmpty == false && contentRun.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false else {
-//						throw NodeParseError.didNotFindAnyText
-//					}
+					let entityDecodedContents = textContents
+						.map(\.body)
+						.joined()
+						   .replacingOccurrences(of: "&#x000A;", with: "")
+						   .replacingOccurrences(of: "&lt;", with: "<")
+						   .replacingOccurrences(of: "&gt;", with: ">")
+						   .replacingOccurrences(of: "&quot;", with: "\"")
+						   .replacingOccurrences(of: "&amp;", with: "&")
+					let contentRun = shouldPreserveWhitespace ? entityDecodedContents : entityDecodedContents
+						.replacingOccurrences(of: "\n", with: " ")
+						.replacingOccurrences(of: "\t", with: " ")
 					
 					return Node(element: InternalElement.textRun, content: .text(contentRun), attributes: [])
 				},
@@ -890,28 +875,26 @@ extension Node {
 		var nodesToReturn = [Node]()
 		var inlineElements = [Node]()
 		
+		func addInlineElementsAsGroupIfNeeded() {
+			guard inlineElements.isEmpty == false else { return }
+			// make a fake block element that has all these as children
+			let wrapper = Node(element: "p", content: .childNodes(inlineElements), attributes: [])
+			// and append it to our list to return
+			nodesToReturn.append(wrapper)
+			// then, empty the inlineElements list
+			inlineElements = []
+		}
+		
 		for node in childNodes {
 			let display = node.styleFromAttributes?.display ?? node.defaultDisplayStyle
 			if display == .inline {
 				inlineElements.append(node)
 			} else {
-				if inlineElements.isEmpty == false {
-					// make a fake block element that has all these as children
-					let wrapper = Node(element: "p", content: .childNodes(inlineElements), attributes: [])
-					// and append it to our list to return
-					nodesToReturn.append(wrapper)
-					// then, empty the inlineElements list
-					inlineElements = []
-				}
+				addInlineElementsAsGroupIfNeeded()
 				nodesToReturn.append(node)
 			}
 		}
-		if inlineElements.isEmpty == false {
-			// make a fake block element that has all these as children
-			let wrapper = Node(element: "p", content: .childNodes(inlineElements), attributes: [])
-			// and append it to our list to return
-			nodesToReturn.append(wrapper)
-		}
+		addInlineElementsAsGroupIfNeeded()
 		return nodesToReturn
 	}
 	
@@ -955,8 +938,7 @@ struct Style {
 	enum DisplayStyle { case inline, block }
 	
 	var display: DisplayStyle? {
-		guard let displayString = rawValue["display"] else { return nil }
-		switch displayString {
+		switch rawValue["display"] {
 		case "inline": return .inline
 		case "block": return .block
 		default:
@@ -965,8 +947,7 @@ struct Style {
 	}
 	
 	var maxWidth: CGFloat? {
-		guard let maxWidth = rawValue["max-width"] else { return nil }
-		return WebSize(rawValue: maxWidth).dimension
+		rawValue["max-width"].map(WebSize.init(rawValue:)).map(\.dimension)
 	}
 	
 	private let rawValue: [String: String]
