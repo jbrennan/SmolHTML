@@ -2,15 +2,17 @@
 
 There's a rumour that Apple's going to start allowing custom, non-WebKit based browser engines on iOS starting later this year. While that most likely means Chrome, Firefox, and the other big browsers could start using custom engines, it also means you could write your own too. So why not try it?
 
-In this 2 part series, I'll take you through how to write a basic web browser, from parsing HTML in Swift to rendering the pages with SwiftUI, displaying them with a simple, but familiar interface. 
+In this 2 part series, I'll take you through how to write a basic web browser, from parsing HTML in Swift to rendering the pages with SwiftUI, displaying them with a simple, but familiar interface.
 
 You might be thinking "Aren't web browsers huge, incredibly complicated pieces of software?" and yes, the big ones we use every day are huge and complicated. But even huge and complicated pieces of software are still "just software" at their core, written by normal programmers just doing their job or following their passion.
 
-What we're attempting in this series is a very simple browser, and the end result is actually a little under 1000 lines of fairly straightforward Swift code. We'll focus solely on rendering a subset of HTML, leaving CSS and Javascript as exercises for the reader :). But in the end you should have an app that can render unstyled, standard HTML pages. Let's get started!
+What we're attempting in this series is a very simple browser, and the end result is actually a little under 1000 lines of fairly straightforward Swift code. We'll focus solely on rendering a subset of HTML, leaving CSS and Javascript as exercises for the reader :). We'll take many shortcuts and liberties, but in the end you should have an app that can render unstyled, standard HTML pages. And you'll also have some tools for writing programming language parsers by hand, which you could use to write your own custom language.
+
+The feature set of our browser is going to be small, but the goal is this: **you should be able to render this very browser tutorial web page in the browser itself**. Fun, right?
 
 ## The Architecture
 
-Before we dive in to code, let's look at the overall archicture of what we're building, to make the challenge ahead more managable. Since HTML is a programming language, we'll follow a similar architecture to that of most compilers / interpreters, which is a sort of pipeline. That's a fancy way of saying some stuff goes in at one end, gets modified by a component, and gets spit out as some new stuff on the other end, where the next component takes *that* stuff and modifies and outputs it, repeating until we have our page rendered in the UI. It's kind of like a glorified chain of function calls. So what are our inputs and components?
+Before we dive in to code, let's look at the overall archicture of what we're building, to make the challenge ahead more managable. Since HTML is a programming language, we'll follow a similar architecture to that of most compilers / interpreters, which is a sort of pipeline, where each part of the pipeline takes input and spits something else out for the next component to work with. So what are our inputs and components?
 
 1. We start with the **raw html**, as a `String`. This either comes from the network or a local file, but it doesn't really matter.
 2. We then digest the html string into an array of **tokens**, in a process known as *tokenizing* or *lexing*. This essentially chews up the raw string into common pieces that are easier to digest, such as punctuation characters (`<, >, ", etc`), whitespaces (newlines, tabs, spaces), digits, or just regular letter characters.
@@ -20,21 +22,25 @@ Before we dive in to code, let's look at the overall archicture of what we're bu
 
 With that general archictecture in mind, let's fire up Xcode and get started.
 
-### A Quick Tip
+### Quick Tips
 
 If you're coding along as you read this tutorial, I highly recommend typing out all the code yourself, instead of copying and pasting. In my experience, I find this forces you to slow down and work more deliberately, and I think it'll help you understand things better in the process.
 
 I'd also recommend changing things as you move along. None of what I've written is the definitive way to write this code, and you could probably put your own spin on it. Or extend it to do even more!
 
+The code I'll be showing in this tutorial is more or less "finished" as is (we won't be building to much of it iteratively, because that would take up a whole book!), but please know my browser *was* built iteratively (you can check out the git history if you'd like to see my stumbles as I went!). Some bits of code in the tutorial will depend upon code we haven't written yet, so please use your imagination if things don't compile at every stage.
+
+Finally, I won't be providing any unit tests in the tutorial, but you may very well like to include some, especially if you decide to extend your browser after you're done. I find programming languages lend themselves very well to unit testing, as they have well defined inputs and outputs.
+
 ## Starting the project
 
-Create a new Xcode project using a SwiftUI template. I called my browser `Smol` because it's very tiny, but feel free to let your creativity shine here. I made my browser be a Mac app just for ease of playing around with, but you could make yours an iOS app if you wanted, everything will work more or less the same. I would make sure testing is enabled (but feel free to delete the UI tests target, as we'll really only be using Unit Tests here) 
+Create a new Xcode project using a SwiftUI template. I called my browser `Smol` because it's very tiny, but feel free to let your creativity shine here. I made my browser be a Mac app just for ease of playing around with, but you could make yours an iOS app if you wanted, everything will work more or less the same. 
 
-In your project settings Info tab, add key for "App Transport Security Settings," and inside that add a key for "Allow arbitrary loads," setting its value to Yes. This will let us load http and https content from anywhere on the internet and is not enabled by default.
+In your project settings Info tab, add key for "App Transport Security Settings," and inside that add a key for "Allow arbitrary loads," setting its value to Yes. This will let us load http and https content from anywhere on the internet and it's not enabled by default.
 
 ## Tokenizing
 
-Tokenizing is the process of breaking down our program from a `String` into an array of `Token` elements, by scanning through the program character by character as we find different tokens. We'll make 3 types: `Token`, `ScanningCursor`, and `Tokenizer`.
+Tokenizing is the process of breaking down our program from a `String` into an array of `Token` elements, by scanning through the program character by character to build up different tokens. We'll make 3 types: `Token`, `ScanningCursor`, and `Tokenizer`.
 
 `Token` will be a small data struct that combines a token `Kind` with the text that makes it up. You could also include other data like where in the program this token is located (which would be helpful in showing errors to someone writing html), but it's not strictly necessary here.
 
@@ -73,7 +79,7 @@ struct Token: Equatable, CustomDebugStringConvertible {
 }
 ```
 
-Next, the `ScanningCursor` class will help us keep track of what character we're looking at at any given moment. This could theoretically just be a part of `Tokenizer`, but I've pulled it out into its own type for possible testability and to keep the purpose of the tokenizer simpler.
+Next, the `ScanningCursor` class will help us keep track of what character we're looking at at any given moment. This could theoretically just be a part of `Tokenizer`, but I've pulled it out into its own type for possible testability and to keep the tokenizer simple.
 
 ```
 class ScanningCursor {
@@ -118,15 +124,15 @@ class Tokenizer {
 		cursor = ScanningCursor(programText: programText)
 	}
 	
-	func scanAllTokens() throws -> [Token] {
+	func scanAllTokens() -> [Token] {
 		while cursor.isNotAtEnd {
-			try scanNextToken()
+			scanNextToken()
 		}
 		
 		return scannedTokens
 	}
 	
-	private func scanNextToken() throws {
+	private func scanNextToken() {
 		let next = cursor.advance()
 		
 		if let token = Token(symbol: next) {
@@ -161,7 +167,7 @@ The `scanNextToken()` method tells the cursor to pop off its next character and 
 
 - if the character matches one of the punctuation token types, we append that token to our list and return
 - if the character is whitespace, we add a single whitespace token
-- otherwise, we assume the token will be some text, so we start scanning that.
+- otherwise, we assume the token will be any other text, so we start scanning that.
 
 `scanText()` grabs the most recently popped-off character and starts its own loop, accumulating text characters into a single string. Here we're considering "text" to be "anything that's neither whitespace nor one of our recognized punctuation tokens." This is a kind of strange way to tokenize text, but html is a strange kind of programming language! and we break things up this way to make parsing easier for us later on.
 
@@ -171,7 +177,7 @@ As mentioned earlier, the **Parsing Context**, is a class whose core purpose is 
 
 You can think of this type as similar to a graphics context, like an OpenGL or Core Graphics context. A graphics context is kind of like a canvas, where you call drawing methods on it (stroke this path, fill this rectangle) or set properties (the current font, the current transform matrix, etc). These calls manipulate the internal state of the context, until you're ready for it to spit out a final rendered image.
 
-The parsing context is kind of like that, but instead of *adding to an eventual image*, we're subtracting bits of the internal token state while we parse out types. When we'er all done parsing, the context should ideally be at the end of its list of tokens and we should have all our parsed data.
+The parsing context is kind of like that, but instead of *adding to an eventual image*, we're subtracting bits of the internal token state while we parse out types. When we're all done parsing, the context should ideally be at the end of its list of tokens and we should have all our parsed data.
 
 ```
 class ParsingContext {
@@ -203,7 +209,7 @@ class ParsingContext {
 	}
 ```
 
-We start with some properties around accessing the tokens. We store a list of all tokens and access them by an index, which is our current parsing location. Instead of storing a single index, we instead have a stack of indexes, with the *current* index being the top of this index stack. We'll look into this more below, but it allows us more flexibility as we're parsing.
+We start with some properties around accessing the tokens. We store a list of all tokens and access them by an index, which is our current parsing location. Instead of storing a single index, we instead have a stack of indexes, with the *current* index being the top of this index stack. We'll look into this more below, but it allows us to move forward *and backward* through the list of tokens as we're parsing.
 
 ```	
 	private func advance(when predicate: (Token) -> Bool, skipWhitespaceTokens: Bool = true) -> Bool {
@@ -244,7 +250,9 @@ We start with some properties around accessing the tokens. We store a list of al
 
 Next, we have the primary methods used for updating the token state, by advancing the cursor when we finding (`advance(when:...)`) and consuming matching tokens. The `advance()` method more or less just checks to see if the given `predicate` closure matches the current token. Most of the time in programming languages, we ignore whitespace tokens, so this method does that by default, but it has a flag to not skip, since we'll need that later on for some of our parsing.
 
-The `consume(...)` methods build upon `advance(...)`, but `throw` an error if matching fails. From this point onward in the parser architecture, we use Swift errors as a means of control flow to indicate more or less that parsing a certain token or syntax node was unsucessful. This doesn't necessarily mean there is an error, only that we weren't able to interpret a specific part a certain way (it might mean it should be interpreted another way).
+The `consume(...)` methods build upon `advance(...)`, but will `throw` an error if matching fails. From this point onward in the parser architecture, we use Swift errors as a means of control flow to indicate more or less that parsing a certain token or syntax node was unsucessful. This doesn't necessarily mean there is an error, only that we weren't able to interpret a specific part a certain way (it might mean it should be interpreted another way).
+
+The consume method takes a feedback string to make parsing failures a little clearer, and to make bugs in the parser a little easier to track down.
 
 ```
 	// MARK: - Helpers
@@ -323,9 +331,9 @@ Finally, we have 4 helper methods that we'll use while parsing.
 
 `choose(from:)` takes an array of closures with parsing calls in them, each returning a value. It then runs through the array, calling each closure in order. If a closure successfully returns a value, `choose` will return that value. If a closure `throws`, then we move on to the next closure to try that. All of this is wrapped in an `attempt(action:)` call so that if parsing in one closure fails, the next one gets a fresh start before it parses. This method is useful when parsing could result in multiple possibilities in the same place in the program, and you frequently (but not always) would want your return type to be an `enum` with a choice for each of its cases.
 
-Finally, `consumeBetween(leftToken:,rightToken:, content:)` helps us in the case when things are wrapped in certain tokens, for example quotes, parentheses, or angle brackets. It tries to consume the left token, then tries the `content` closure, and finally tries to consume the right token. If all of that succeeded, it returns whatever was returned by the closure.
+Finally, `consumeBetween(leftToken:, rightToken:, content:)` helps us in the case when things are wrapped in certain tokens, for example quotes, parentheses, or angle brackets. It tries to consume the left token, then tries the `content` closure, and finally tries to consume the right token. If all of that succeeded, it returns whatever was returned by the closure.
 
-And that completes the `ParsingContext`, which is models common operations used throughout the HTML parsing process (and which could easily be reused with parsers for your own programming language too).
+And that completes the `ParsingContext`, which models common operations used throughout the HTML parsing process (and which could easily be reused with parsers for your own programming language too).
 
 ## Parsing HTML
 
@@ -368,7 +376,7 @@ struct Document: Hashable, Parsable {
 }
 ```
 
-An html document has 0 or more "nodes" (tags) at the top level. It might have a `<!doctype>` tag, and it ideally should have an `<html>` tag too. Our `Document.parse(:)` implementation asks the given parsing context to parse out `Node`s until it an error is thrown or we've reached the end of the tokens. Then, we search through that array of nodes, looking for the `html` node, and finally, we return the document initialized with that found node (and we ignore any doctype or other nodes we might find). If we can't find any html node, we throw an error indicating such. It might be that the program really didn't contain an html tag, or more likely, that our `Node` parser failed to handle something inside the html node and errored out.
+An html document has 0 or more "nodes" (tags) at the top level. It might have a `<!doctype>` tag, and it ideally should have an `<html>` tag too. Our `Document.parse(:)` implementation asks the given parsing context to parse out `Node`s until an error is thrown or we've reached the end of the tokens. Then, we search through that array of nodes, looking for the `html` node, and finally, we return the document initialized with that found node (and we ignore any doctype or other nodes we might find). If we can't find any html node, we throw an error indicating such. It might be that the program really didn't contain an html tag, or more likely, that our `Node` parser failed to handle something inside the html node and errored out.
 
 Our parser system is going to be kind of strict in what it accepts, which is contrary to how the Big Browsers tend to work, where they'll accept pretty much anything you throw at them. Our approach favours simplicity of implementation to get concepts across, at the cost of compatibility with lots of websites. As you build out your browser, feel free to expand what your parser can handle :)
 
@@ -439,7 +447,7 @@ We begin by trying to parse a start tag (which we'll get to in a bit). Then, we 
 
 If none of those conditions are met, we keep parsing. At this point, we have a start tag and we need to look for 0 or more children we might have, before reaching an end tag.
 
-To parse child nodes, we're going to ask the context to parse until we hit an error. This way, we'll get 0 or more child nodes. Inside that loop, we're going to ask the context to choose from a few possibilities:
+To parse child nodes, we're going to ask the context to parse nodes  until we hit an error. This way, we'll get 0 or more child nodes. Inside that loop, we're going to ask the context to choose from a few possibilities:
 
 ```
 	let children = context.untilThrowOrEndOfTokensReached(perform: {
@@ -495,7 +503,7 @@ Then, we do some quick and dirty text replacement, replacing encoded html entiti
 					try context.consume(tokenKind: .hyphen, feedback: "-")
 					done = true
 				} else {
-					try context.consume(where: { _ in true }, skipWhitespaceTokens: false, feedback: "munch munch")
+					try context.consume(where: { _ in true }, skipWhitespaceTokens: false, feedback: "consuming comment contents")
 				}
 			}
 			
@@ -587,11 +595,11 @@ Next, we parse an identifier that we'll use for the tag's element. Then we attem
 }
 ```
 
-Finally, optionally look for and ignore a trailing slash at the end of the tag, as it's not actually valid html (this news to me when I started working on the browser). However, it's extremely common, so I thought it warranted handling here to make more of the web work. With that out of the way, we return our completed tag.
+Finally, optionally look for and ignore a trailing slash at the end of the tag, as it's not actually valid html (this was news to me when I started working on the browser). However, it's extremely common, so I thought it warranted handling here to make more of the web work. With that out of the way, we return our completed tag.
 
 ### Attribute
 
-Ok, last part of the parser! the lil attributes inside a tag.
+Ok, last part of the parser! the attributes inside a tag.
 
 ```
 struct Attribute: Hashable, Parsable {
@@ -611,7 +619,7 @@ struct Attribute: Hashable, Parsable {
 		}
 ```
 
-Attributes are (usually) key-value pairs, so those are our properties (attributes that don't have explicit values, we'll just repeat the key for the value). 
+Attributes are (usually) key-value pairs, so those are our properties (for attributes that don't have explicit values, we'll just repeat the key for the value). 
 
 Then, we start parsing. First we parse the key, then we look for an equals sign token. If we don't find it, we assume this attribute is the valueless kind and return it immediately. Otherwise, we parse the value, as a choice:
 
@@ -620,7 +628,7 @@ let value = try context.choose(from: [
 {
 	try context.consumeBetween(leftToken: .doubleQuote, rightToken: .doubleQuote) {
 		let textContents = context.untilThrowOrEndOfTokensReached {
-			try context.consume(where: { $0.kind != .doubleQuote }, skipWhitespaceTokens: false, feedback: "Expected a non `\"` token")
+			try context.consume(where: { $0.kind != .doubleQuote }, skipWhitespaceTokens: false, feedback: "Expected a non quote token")
 		}
 		
 		return textContents
@@ -636,7 +644,7 @@ First choice: the value is between double quotes, and we consume everything insi
 {
 	try context.consumeBetween(leftToken: .singleQuote, rightToken: .singleQuote) {
 		let textContents = context.untilThrowOrEndOfTokensReached {
-			try context.consume(where: { $0.kind != .singleQuote }, skipWhitespaceTokens: false, feedback: "Expected a non `'` token")
+			try context.consume(where: { $0.kind != .singleQuote }, skipWhitespaceTokens: false, feedback: "Expected a non single quote token")
 		}
 		
 		return textContents
@@ -686,3 +694,723 @@ Last, we return the completed attribute.
 This completes the end of part 1! We built ourselves some tools for breaking apart a program string into tokens and parsing them. And then we built some data types that know how to parse themselves using those tools. HTML is a kind of strange language, but we saw some familiar patterns repeated in multiple places (things being wrapped inside others, for example).
 
 In the next part, we'll take the data we just parsed and render it with SwiftUI.
+
+
+# Part 2: Rendering in SwiftUI
+
+## The Architecture
+
+The architecture of our rendering engine should look pretty familiar to anyone who's worked with SwiftUI before: we're more or less just going to have views which render our node hierarchy. It's almost exclusively composed of standard SwiftUI views, plus a controller object for loading HTML pages, and a few extensions on the `Node` type to more easily work with its properties. Here are the main pieces we'll be working with.
+
+- `PageController` is responsible for loading web urls asynchronously and parsing them into `Document`s. It also maintains the back / forward stacks of documents.
+- Some views:
+	- `BrowserView` is the primary view, containing our chrome (back / forward / address bar) and the document view.
+	- `WebDocumentView` displays either a homepage, error page, or the contents of the loaded page, depending on the page controller's state.
+	- `BodyView` is the true beginnings of our rendering engine, it nests our page's content in a scroll view.
+	- `BlocksView` displays views for 0 or more nodes in a vertical stack. It picks a different view depending on the node's element.
+	- `InlineContentWrappingBlockView` combines the text of all its inline elements into one big `Text` for rendering.
+	- `ListNodeView` renders ordered or unordered lists and their items.
+	- `ImageView` asynchronously downloads and renders img nodes.
+- Extensions on `Node` for accessing its content.
+
+### The Page Controller
+
+The `PageController` is our main controller object, responsible for loading pages, parsing them, and managing the back / forward stacks:
+
+```
+class PageController: ObservableObject {
+	
+	enum State {
+		case notLoaded
+		case loaded(Document, URL)
+		case failed(Error)
+	}
+	
+	private enum LoadingError: Error {
+		case failedToLoad(URL)
+	}
+	
+	@Published var state = State.notLoaded {
+		didSet {
+			if let currentlyLoadedDocument {
+				address = currentlyLoadedDocument.1.absoluteString
+			}
+		}
+	}
+	var address = "https://nearthespeedoflight.com/smol.html"
+	
+	private var backStack: [(Document, URL)] = []
+	private var forwardStack: [(Document, URL)] = []
+	
+	var canGoBack: Bool { backStack.isEmpty == false }
+	var canGoForward: Bool { forwardStack.isEmpty == false }
+```
+
+First we set up some nested types. The controller can be in one of three `State`s: an initial unloaded state (maybe you show a homepage?), a loaded state with the parsed document and the URL it came from, and the failed error state.
+
+Then we have some properties, mainly the controller's current `state`, its current `address` string, and the back / forward stacks.
+
+```
+	func loadPage(at url: URL) {
+		Task {
+			let newState: State
+			do {
+				let (data, response) = try await URLSession.shared.data(from: url)
+				
+				if let currentlyLoadedDocument {
+					backStack.append(currentlyLoadedDocument)
+					forwardStack = []
+				}
+				
+				let htmlString = String(data: data, encoding: .utf8) ?? ""
+				let tokenizer = Tokenizer(programText: htmlString)
+				let context = try ParsingContext(tokens: tokenizer.scanAllTokens())
+				
+				newState = .loaded(try Document.parse(context: context, options: nil), response.url ?? url)
+			} catch {
+				print("error loading page: \(error)")
+				newState = .failed(error)
+			}
+			
+			await MainActor.run {
+				state = newState
+			}
+		}
+	}
+```
+
+To load a page, we kick off an async `Task`, await the loading of the given url, then we put the data through our parser pipeline. We also set the back / forward stacks to account for the state change that's about to happen.
+
+This is all made a little awkward due to error handling, as we want to catch any errors that happen here: there could be URL related errors, there could be an error in the parsing context, or there could be an error parsing the document. If there is an error, we want to record it. This wouldn't be so bad on its own, but we don't want to do any of this parsing on the main actor, where it could freeze the UI, *but* we must update our controller's `state` property on the main actor, as our view depends on that property to draw itself.
+
+```
+	private var currentlyLoadedDocument: (Document, URL)? {
+		switch state {
+		case .notLoaded, .failed: return nil
+		case let .loaded(document, url): return (document, url)
+		}
+	}
+	
+	func goBack() {
+		guard let (previousDocument, previousURL) = backStack.popLast() else { return }
+		if let currentlyLoadedDocument {
+			forwardStack.append(currentlyLoadedDocument)
+		}
+		state = .loaded(previousDocument, previousURL)
+	}
+	
+	func goForward() {
+		guard let (nextDocument, nextURL) = forwardStack.popLast() else { return }
+		if let currentlyLoadedDocument {
+			backStack.append(currentlyLoadedDocument)
+		}
+		state = .loaded(nextDocument, nextURL)
+	}
+}
+```
+
+Finally, we have a helper property for accessing the currently loaded document, if any, and methods for going back and forward. That wraps up our controller. Next, we'll see how the views make use of it while displaying our nodes.
+
+### The Browser View
+
+As mentioned above, our `BrowserView` is the primary view for our browser window: it composes the "chrome" of our UI, plus the actual rendered content in another view. Our UI is going to be very simple, but you could extend it to use tabs, or even something more imaginative if you want :)
+
+```
+struct BrowserView: View {
+	@ObservedObject var controller: PageController
+	@FocusState private var addressIsFocused: Bool
+```
+
+All we need are 2 properties, an observed page controller and the focus state of the address textfield, so that focus works like you'd expect as we navigate.
+
+```
+	var body: some View {
+		VStack(spacing: 0) {
+			HStack {
+				HStack(spacing: 0) {
+					Button(action: { controller.goBack() }) {
+						Image(systemName: "arrowtriangle.left.fill")
+					}.disabled(controller.canGoBack == false)
+					Button(action: { controller.goForward() }) {
+						Image(systemName: "arrowtriangle.right.fill")
+					}.disabled(controller.canGoForward == false)
+				}
+				TextField("Address", text: $controller.address)
+					.onSubmit {
+						addressIsFocused = false
+						guard let url = URL(string: controller.address) else { return }
+						controller.loadPage(at: fullURL(forURLToLoad: url))
+					}
+					.textFieldStyle(RoundedBorderTextFieldStyle())
+					.focused($addressIsFocused)
+			}
+			.padding()
+			Divider()
+```
+
+The body of our view until this point is all about the chrome. We create our back / forward buttons and the address bar, and we bind their actions to our controller.
+
+```
+			WebDocumentView(controller: controller)
+				.background(.white)
+				.environment(\.openURL, .init(handler: { url in
+					controller.loadPage(at: fullURL(forURLToLoad: url))
+					addressIsFocused = false
+					return .handled
+				}))
+		}
+```
+
+We configure the WebDocumentView and override SwiftUI's `openURL` environment value. When the user clicks a link in our app, SwiftUI invokes this callback, giving our app a chance to handle the URL. With the given URL, we construct an absolute URL (below), adjust the text field's focus, and tell the system we handled the url (we could also tell the system to handle it instead if the URL was eg `mailto:...`, but I'll leave that to you). 
+
+```
+		.environment(\.urlBuilder, fullURL(forURLToLoad:))
+	}
+	
+	private func fullURL(forURLToLoad urlToLoad: URL) -> URL {
+		if urlToLoad.host != nil { return urlToLoad }
+		
+		switch controller.state {
+		case .failed, .notLoaded: return urlToLoad
+		case .loaded(_, let loadedURL):
+			return URL(string: urlToLoad.path, relativeTo: loadedURL.deletingLastPathComponent()) ?? urlToLoad
+		}
+	}
+} // End of BrowserView
+
+private struct URLBuilderKey: EnvironmentKey {
+	static let defaultValue: (URL) -> URL = { $0 }
+}
+
+extension EnvironmentValues {
+	/// A function that takes a (potentially "relative") web url to load, and fleshes it out to a full url that includes a host.
+	var urlBuilder: (URL) -> URL {
+		get { self[URLBuilderKey.self] }
+		set { self[URLBuilderKey.self] = newValue }
+	}
+}
+```
+
+Finally, we use the environment modifier for a custom environment value. The `urlBuilder` is a closure / function responsible for taking a URL (one that's possibly relative, eg just `/page.html` vs `https://example.com/page.html`) and expanding it to an absolute URL so that pages and assets like images can be loaded.
+
+We do this as an environment value so that other views in the hierarchy can access the functionality.
+
+### Web Document View
+
+The `WebDocumentView` takes up the majority of space in our browser window. What it shows depends on the `state` of the page controller, either showing a simple home page, error screen, or the loaded content.
+
+```
+struct WebDocumentView: View {
+	@ObservedObject var controller: PageController
+	
+	var body: some View {
+		switch controller.state {
+		case .notLoaded:
+			Text("Let's load a web page!")
+				.frame(maxWidth: .infinity, maxHeight: .infinity)
+		case .failed(let error):
+			Text(verbatim: "Failed to load page. Error: \(error)")
+				.frame(maxWidth: .infinity, maxHeight: .infinity)
+		case .loaded(let document, _):
+			BodyView(bodyNode: document.htmlNode.firstDirectChild(named: "body")!)
+				.navigationTitle(
+					document
+						.htmlNode
+						.firstDirectChild(named: "head")?
+						.firstDirectChild(named: "title")?
+						.firstDirectChild(named: Node.InternalElement.textRun)?
+						.textContent ?? "Smol"
+				)
+				.environment(\.font, Font.custom("Times", size: 16))
+		}
+	}
+}
+```
+
+The `BodyView` accesses some properties on `Node` which we'll write shortly for accessing child nodes more easily. We drill down to find the page's title, if it has one, and set that as our window title. Finally, we set a default font on the document's text. "Times" is the font you see in most browsers with unstylized text (but you're allowed to choose any font you'd like here).
+
+### Node extensions
+
+Before we go any further with our views, let's write those helpers in an extension on `Node`.
+
+```
+extension Node {
+	var childNodes: [Node] {
+		switch content {
+		case .voidNode, .text: return []
+		case .childNodes(let nodes): return nodes
+		}
+	}
+	
+	var textContent: String? {
+		switch content {
+		case .childNodes, .voidNode: return nil
+		case .text(let text): return text
+		}
+	}
+	
+	func firstDirectChild(named element: String) -> Node? {
+		childNodes.first(where: { $0.element == element })
+	}
+```
+
+These properties help us access child nodes and text content more easily.
+
+```
+	var childNodesSortedIntoBlocks: [Node] {
+		var nodesToReturn = [Node]()
+		var inlineElements = [Node]()
+		
+		func addInlineElementsAsGroupIfNeeded() {
+			guard inlineElements.isEmpty == false else { return }
+			// make a fake block element that has all these as children
+			let wrapper = Node(element: "p", content: .childNodes(inlineElements), attributes: [])
+			// and append it to our list to return
+			nodesToReturn.append(wrapper)
+			// then, empty the inlineElements list
+			inlineElements = []
+		}
+		
+		for node in childNodes {
+			if isInlineNode {
+				inlineElements.append(node)
+			} else {
+				addInlineElementsAsGroupIfNeeded()
+				nodesToReturn.append(node)
+			}
+		}
+		addInlineElementsAsGroupIfNeeded()
+		return nodesToReturn
+	}
+	
+	var isInlineNode: Bool {
+		[InternalElement.textRun, "a", "abbr", "acronym", "audio", "b", "bdi", "bdo", "big", "br", "button", "canvas", "cite", "code", "data", "datalist", "del", "dfn", "em", "embed", "i", "iframe", "img", "input", "ins", "kbd", "label", "map", "mark", "meter", "noscript", "object", "output", "picture", "progress", "q", "ruby", "s", "samp", "script", "select", "slot", "small", "span", "strong", "sub", "sup", "svg", "template", "textarea", "time", "u", "tt", "var", "video", "wbr"].contains(element)
+	}
+```
+
+This next property is a little more involved. When we're rendering nodes, we want block nodes, like `<p>`, `<div>`, etc. to flow one after another, vertically down the page, while things like `<bold>`, `<a>`, etc. flow within the same line like words in a paragraph.
+
+The trouble for us is, in html those inline elements don't have exist inside of block elements at all, they can exist outside of them too. For example:
+
+```
+<body>
+	<bold>Some bold text</bold>
+	<p>A paragraph</p>
+</body>
+```
+
+The bold text is just kinda hanging out as inline, but inline relative *to what?* I'm not entirely sure how other browsers solve this, but we've solved it by grouping any inline elements as children of a fake, inserted `<p>` node.
+
+```
+	var attributeDictionary: [String: String] {
+		Dictionary(uniqueKeysWithValues: attributes.map({ ($0.key, $0.value) }))
+	}
+}
+```
+
+Lastly, we offer a way to access the node's attributes as a dictionary.
+
+Now we have enough tools at our disposal to write the rest of the views.
+
+### The BodyView
+
+This view hosts our browser's scroll view, which then displays child nodes in another view.
+
+```
+struct BodyView: View {
+	let bodyNode: Node
+	var body: some View {
+		ScrollView {
+			BlocksView(children: bodyNode.childNodesSortedIntoBlocks)
+			.padding(20)
+		}
+		.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+		.background(Color.white)
+	}
+}
+```
+
+The hierarchy here is mostly straightforward: the `BlocksView` is initialized with the child nodes of the body and is given a global padding. Then we extend the frame of the scroll view to stretch as much as possible and align the content to the top leading edge, like other browsers do.
+
+### BlocksView
+
+This one is kind of fun: it's a reusable view that vertically stacks the child nodes it was given, rendering them with the appropriate view depending on what element they are. It even recursively uses itself in a few cases.
+
+```
+struct BlocksView: View {
+	let children: [Node]
+	
+	var body: some View {
+		VStack(alignment: .leading, spacing: 20) {
+			ForEach(children, id: \.self) { childNode in
+				switch childNode.element {
+				case "h1":
+					InlineContentWrappingBlockView(node: childNode)
+						.font(Font.custom("Times", size: 32).bold())
+				case "h2":
+					InlineContentWrappingBlockView(node: childNode)
+						.font(Font.custom("Times", size: 28).bold())
+				case "h3":
+					InlineContentWrappingBlockView(node: childNode)
+						.font(Font.custom("Times", size: 24).bold())
+				case "p":
+					InlineContentWrappingBlockView(node: childNode)
+				case "img":
+					ImageView(node: childNode)
+				case "div", "section", "main", "footer", "article", "header", "nav", "aside":
+					BlocksView(children: childNode.childNodesSortedIntoBlocks)
+				case "pre":
+					BlocksView(children: childNode.childNodesSortedIntoBlocks)
+						.font(Font.system(size: 13, design: .monospaced))
+				case "blockquote":
+					BlocksView(children: childNode.childNodesSortedIntoBlocks)
+						.padding(.leading, 20)
+				case "ul": ListNodeView(node: childNode, style: .unordered)
+				case "ol": ListNodeView(node: childNode, style: .ordered)
+				case "hr": Divider()
+				case "script": EmptyView()
+				case "br": Color.clear.padding(20)
+				default: Text("unknown block element: <\(childNode.element)>")
+				}
+			}
+		}
+	}
+}
+```
+
+We don't support special rendering for every element under the sun, so if we find an element we don't know about, we just render that we found an unknown block. You could default it to behaving like a `<div>` if you wanted, but I like calling them out like this instead because I'm more motivated to give it a proper view that way.
+
+### Inline nodes
+
+Inline nodes are interesting, because to render them we can't just use views placed in some kind of stack. Instead, we want them to be rendered one after another like text, wrapping to the next line as needed. And indeed, that's how we're going to do it in SwiftUI, by combining (or in Swift terms, using `reduce()`) inline contents into an `AttributedString` and rendering it in a single `Text` view per inline "block."
+
+```
+struct InlineContentWrappingBlockView: View {
+	let node: Node
+	@Environment(\.font) var font
+	
+	var body: some View {
+		Text(
+			node
+				.childNodes
+				.map { $0.attributedText(defaultFont: font ?? Font.custom("Times", size: 16)) }
+				.reduce(AttributedString(), +)
+		)
+		.lineSpacing(4)
+		.fixedSize(horizontal: false, vertical: true)
+	}
+}
+```
+
+In the body of our body, we return a single `Text`, initialized with an attributed string. The attributed string is created by mapping the node's child nodes and calling the `attributedText(defaultFont:)` method on each (we'll see that property in a moment). This mapping gives us an array of attribute strings, so we `reduce()` them into a single attributed string.
+
+```
+extension Node {
+	func attributedText(defaultFont: Font) -> AttributedString {
+		switch element {
+		case InternalElement.textRun:
+			var attributes = AttributeContainer()
+			attributes.font = defaultFont
+			
+			return AttributedString(textContent ?? "", attributes: attributes)
+```
+
+To get the attributed text for a node, we switch over its `element` to see how we should format it. Here we have the base case: a text run. We create an attribute container, use the font that was passed in, and return an attributed string with the node's text content and those attributes.
+
+```
+		case "em", "i":
+			var attributes = AttributeContainer()
+			attributes.font = defaultFont.italic()
+			
+			return childNodes
+				.map { $0.attributedText(defaultFont: defaultFont.italic()) }
+				.reduce(AttributedString(), +)
+				.mergingAttributes(attributes, mergePolicy: .keepCurrent)
+```
+
+The rest of the cases are similar, in that we create some attributes, modifying the passed in font as needed. But in order to create the final attributed string, we actually need to recursively call ourselves so that we can handle multiple overlapping styles (eg a link node wrapped inside an italics node). 
+
+```
+		case "strong", "b":
+			var attributes = AttributeContainer()
+			attributes.font = defaultFont.bold()
+			
+			return childNodes
+				.map { $0.attributedText(defaultFont: defaultFont.bold()) }
+				.reduce(AttributedString(), +)
+				.mergingAttributes(attributes, mergePolicy: .keepCurrent)
+		case "code":
+			var attributes = AttributeContainer()
+			let monospaced = Font.system(size: 13, design: .monospaced)
+			attributes.font = monospaced
+			
+			return childNodes
+				.map { $0.attributedText(defaultFont: monospaced) }
+				.reduce(AttributedString(), +)
+				.mergingAttributes(attributes, mergePolicy: .keepCurrent)
+		case "a":
+			var attributes = AttributeContainer()
+			attributes.link = URL(string: attributeDictionary["href"] ?? "")
+			attributes.underlineStyle = .single
+			
+			return childNodes
+				.map { $0.attributedText(defaultFont: defaultFont) }
+				.reduce(AttributedString(), +)
+				.mergingAttributes(attributes, mergePolicy: .keepCurrent)
+		default:
+			var attributes = AttributeContainer()
+			attributes.font = defaultFont
+			
+			return childNodes
+				.map { $0.attributedText(defaultFont: defaultFont) }
+				.reduce(AttributedString(), +)
+				.mergingAttributes(attributes, mergePolicy: .keepCurrent)
+		}
+	}
+}
+```
+
+It's all a little boilerplatey but it gets the job done.
+
+### ImageView
+
+SwiftUI already has the a perfect view for us: `AsyncImage`, which we'll wrap in our own `ImageView` to customize it a little.
+
+(Note: `<img>` nodes still won't render yet because they're considered inline by default, and we won't add support for inline images. However, at the end of the tutorial we'll add support for `display: block` styles on images)
+
+```
+struct ImageView: View {
+	let node: Node
+	@Environment(\.urlBuilder) var urlBuilder
+	
+	var body: some View {
+		AsyncImage(url: urlBuilder(URL.init(string: node.attributeDictionary["src"] ?? "")!), content: { image in
+			image
+				.resizable()
+				.aspectRatio(contentMode: .fit)
+				.frame(
+					width: node.attributeDictionary["width"].flatMap(WebSize.init(rawValue:))?.dimension,
+					height: node.attributeDictionary["height"].flatMap(WebSize.init(rawValue:))?.dimension
+				)
+		}, placeholder: {
+			Color(white: 0.9).cornerRadius(4)
+		})
+	}
+}
+```
+
+From the environment, we pull out the `urlBuilder` function we declared earlier in our view hierarchy, so that we can make sure the image's `src` url is an absolute url, that we'll then hand off to SwiftUI to load asynchronously for us. When the image is ready, we resize it and constrain it as necessary, depending on any width or height attributes of the `<img>` node.
+
+```
+struct WebSize {
+	let rawValue: String
+	
+	var dimension: CGFloat {
+		// trim anything that isn't a digit, then try to parse that into an int. this ignores things like "px"
+		CGFloat(Int(rawValue.prefix(while: \.isWholeNumber)) ?? 0)
+	}
+}
+```
+
+`WebSize` is a small little type for extracting number values out of sizing values in html. We're assuming everything is measured in `px` for simplicity's sake. Sizing in html is a complicated topic, but you could go deep here if you wanted.
+
+### ListNodeView
+
+Our last node view is the `ListNodeView`, which we'll use for displaying both ordered and unordered lists (`<ol>` and `<ul>`).
+
+```
+struct ListNodeView: View {
+	enum Style {
+		case ordered, unordered
+		
+		func listMarker(for index: Int) -> String {
+			switch self {
+			case .ordered: return "\(index + 1)."
+			case .unordered: return "•"
+			}
+		}
+	}
+```
+
+We start with an enum for the two list styles, and a function for picking the right list item marker for the given index.
+
+```
+	let node: Node
+	let style: Style
+	
+	var body: some View {
+		VStack(alignment: .leading, spacing: 8) {
+			ForEach(Array(zip(node.childNodes.indices, node.childNodes)), id: \.1) { (index, childNode) in
+				HStack(alignment: .firstTextBaseline, spacing: 8) {
+					Text(verbatim: style.listMarker(for: index))
+					BlocksView(children: childNode.childNodesSortedIntoBlocks)
+				}
+			}
+		}
+	}
+}
+```
+
+The body of the list node should look pretty straightforward at this point: a vertical stack wherein we iterate all our child nodes and render them as list items (using a kind of noisy `Array/zip` dance to get the index). A list item uses a horizontal stack to display the marker, followed by a `BlocksView` for the grouped children (it could be, for example, multiple paragraphs).
+
+### Preserving Whitespace
+
+You may notice at this point, if you load up a webpage with a `<pre>` tag, it uses a monospaced font but it does not preserve whitespace. That's because we're currently discarding tabs and newlines in our parser. But for `<pre>` tags we should be preserving it in child nodes (and all of their descendents). So let's make some modifications to the parser.
+
+In the parse method of `Node`, immediately before parsing child nodes, let's add the following line:
+
+```
+let shouldPreserveWhiteSpace = startTag.element == "pre"
+```
+
+Then, in the 2nd choice closure (text runs), we want to replace whitespaces only when we're *not* preserving whitespace. Change our entity decoding code to the following:
+
+```
+let entityDecodedContents = textContents
+	.map(\.body)
+	.joined()
+	   .replacingOccurrences(of: "&#x000A;", with: "")
+	   .replacingOccurrences(of: "&lt;", with: "<")
+	   .replacingOccurrences(of: "&gt;", with: ">")
+	   .replacingOccurrences(of: "&quot;", with: "\"")
+	   .replacingOccurrences(of: "&amp;", with: "&")
+
+let contentRun = shouldPreserveWhitespace ? entityDecodedContents : entityDecodedContents
+	.replacingOccurrences(of: "\n", with: " ")
+	.replacingOccurrences(of: "\t", with: " ")
+```
+
+This preserves whitespace great when the text is a direct child of the node, but doesn't yet handle deeper nestings. To do that, we'll have to pass `shouldPreserveWhitespace` as a flag to child node parsing. To keep things simple, let's add the flag to our `Parsable` protocol requirement:
+
+```
+static func parse(context: ParsingContext, shouldPreserveWhitespace: Bool) throws -> Self
+```
+
+After you make the change you'll have to go through all the call sites where we implement the `parse(...)` method and update them to include the new flag. At pretty much every callsite, just give a value of `false`. However, let's return to `Node`, specifically where we're parsing a child node (the first choice). Change the parse call to:
+
+```
+try Node.parse(context: context, shouldPreserveWhitespace: shouldPreserveWhitespace)
+```
+
+so that we can pass it down the line. Finally, where we declare our local variable for preserving whitespace, we update that to factor in the parameter passed in:
+
+```
+let shouldPreserveWhitespace = startTag.element == "pre" || shouldPreserveWhitespace
+```
+
+Now if we run the browser, we should see that whitespace preservation works as expected.
+
+### Two Last Things
+
+You may have noticed that most browsers, when given an unstyled html page, will render the body using the entire width of the browser window, and our browser does this exact same thing. However, on modern monitors, this can result in extremely long lines of text that are kind of hard to read due to their length, so the nice thing to do is to style the container with a maximum width.
+
+While supporting all of CSS is way, way out of scope for this tutorial, it would still be nice to leave us with a starting point, so I'd like to add support to the `style` attribute, which we'll parse in a rather crude way. Let's start with a type representing a style.
+
+```
+struct Style {
+	
+	var maxWidth: CGFloat? {
+		rawValue["max-width"].map(WebSize.init(rawValue:)).map(\.dimension)
+	}
+	
+	private let rawValue: [String: String]
+	
+	init(rawPairs: [String: String]) {
+		self.rawValue = rawPairs
+	}
+}
+```
+
+`Style` wraps an underlying dictionary of keys and values, and adds a helper property that looks for a `max-width` key and returns the value interpreted as a float. Now let's create a style instance from a node's style attribute, if it exists. In an extension on `Node`, put the following:
+
+```
+var styleFromAttributes: Style? {
+	guard let styleAttribute = attributeDictionary["style"] else { return nil }
+	let stylePairs = styleAttribute.components(separatedBy: ";")
+```
+
+First, we check to see if we even have a style attribute, otherwise we bail. Then, we break up the value string into substrings, which are separated by a semicolon.
+
+```
+	return Style(
+		rawPairs: .init(
+			uniqueKeysWithValues: stylePairs
+				.map { $0.components(separatedBy: ":") }
+				.map { ($0.first?.trimmingCharacters(in: .whitespacesAndNewlines), $0.last?.trimmingCharacters(in: .whitespacesAndNewlines)) }
+				.compactMap {
+					guard let key = $0, let value = $1 else { return nil }
+					return (key, value)
+				}
+		)
+	)
+}
+```
+
+Finally, we initialize the `Style` with a dictionary, whose keys and values are found by splitting up those substrings from earlier on colons, trimming out whitespace, and finally returning them as a non-nil tuple. This code is kinda fragile would definitely be made more powerful (and extensible!) if we wrote a parser like we did for html, but I'll leave that as an exercise for the reader :)
+
+Now that we can access a typed version of a node's style attribute, let's use it on our `BodyView`. Change the body view's `body` (:S) scroll view to this:
+
+```
+ScrollView {
+	HStack(spacing: 0) {
+		BlocksView(children: bodyNode.childNodesSortedIntoBlocks)
+			.frame(maxWidth: bodyNode.styleFromAttributes?.maxWidth)
+		Spacer()
+	}
+	.padding(20)
+}
+```
+
+This makes the `BlocksView` respect the `max-width` from the `<body>` tag, if it exists.
+
+Ok, last last last thing I promise: in html `<img>` nodes are considered inline elements by default. Our browser doesn't support this at all (but you could add it if you'd like). We *do* want to support images as block elements, though. Now that we have basic support for the style attribute, let's extend it to support the `display` property. Inside `Style`, add the following:
+
+```
+enum DisplayStyle { case inline, block }
+
+var display: DisplayStyle? {
+	switch rawValue["display"] {
+	case "inline": return .inline
+	case "block": return .block
+	default:
+		return nil
+	}
+}
+```
+
+Then, in our `childNodesSortedIntoBlocks` property, edit the the for loop to look like this:
+
+```
+for node in childNodes {
+	let defaultDisplayStyle: Style.DisplayStyle = node.isInlineNode ? .inline : .block 
+	let display = node.styleFromAttributes?.display ?? defaultDisplayStyle
+	if display == .inline {
+		inlineElements.append(node)
+	} else {
+		addInlineElementsAsGroupIfNeeded()
+		nodesToReturn.append(node)
+	}
+}
+```
+
+With that modification, `<img>` nodes that have a style attribute declaring they should be `display: block` will now be properly considered block views in our renderer, and appear accordingly.
+
+## The End
+
+This concludes our browser engine. We wrote a simple html parser from scratch with Swift, and then wrote a rendering engine using SwiftUI. In all, the browser should be capable of rendering this very tutorial, and it should look pretty much identical to how it looks in Safari, Chrome, or other Big Browsers.
+
+You could extend this foundation in so many ways:
+
+- You could add more block or inline elements types
+- You could expand what style elements are supported
+- You could even write your own CSS parser! of if you have limitless ambition, you could write a javascript engine too
+
+But most of all, I hope you enjoyed yourself and learned a thing or two.
+
+Thanks for reading!
+
+(ps: I'm looking for work, so if you're looking to hire someone to work on browsers, programming languages, dev tools, or Swift apps, I'm your guy! [Please reach out](mailto:i.jasonbrennan@gmail.com), I'd love to hear from you)
+
+todo:
+
+- screenshots
