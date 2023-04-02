@@ -4,6 +4,8 @@ There's a rumour that Apple's going to start allowing custom, non-WebKit based b
 
 In this 2 part series, I'll take you through how to write a basic web browser, from parsing HTML in Swift to rendering the pages with SwiftUI, displaying them with a simple, but familiar interface.
 
+<img src="smol-screenshot.png" style="display: block" width="600">
+
 You might be thinking "Aren't web browsers huge, incredibly complicated pieces of software?" and yes, the big ones we use every day are huge and complicated. But even huge and complicated pieces of software are still "just software" at their core, written by normal programmers just doing their job or following their passion.
 
 What we're attempting in this series is a very simple browser, and the end result is actually a little under 1000 lines of fairly straightforward Swift code. We'll focus solely on rendering a subset of HTML, leaving CSS and Javascript as exercises for the reader :). We'll take many shortcuts and liberties, but in the end you should have an app that can render unstyled, standard HTML pages. And you'll also have some tools for writing programming language parsers by hand, which you could use to write your own custom language.
@@ -1403,7 +1405,7 @@ You could extend this foundation in so many ways:
 
 - You could add more block or inline elements types
 - You could expand what style elements are supported
-- You could even write your own CSS parser! of if you have limitless ambition, you could write a javascript engine too
+- You could even write your own CSS parser! or if you have limitless ambition, you could write a javascript engine too
 
 But most of all, I hope you enjoyed yourself and learned a thing or two.
 
