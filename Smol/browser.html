@@ -469,12 +469,17 @@
     let contentRun = textContents
             .map(\.body)
             .joined()
-            .replacingOccurrences(of: &quot;&amp;#x000A;&quot;, with: &quot;&quot;)
             .replacingOccurrences(of: &quot;\n&quot;, with: &quot; &quot;)
             .replacingOccurrences(of: &quot;\t&quot;, with: &quot; &quot;)
+            .replacingOccurrences(of: &quot;&amp;#x000A;&quot;, with: &quot;&quot;)
             .replacingOccurrences(of: &quot;&amp;lt;&quot;, with: &quot;&lt;&quot;)
             .replacingOccurrences(of: &quot;&amp;gt;&quot;, with: &quot;&gt;&quot;)
+            .replacingOccurrences(of: &quot;&amp;#39;&quot;, with: &quot;&#39;&quot;)
             .replacingOccurrences(of: &quot;&amp;quot;&quot;, with: &quot;\&quot;&quot;)
+            .replacingOccurrences(of: &quot;&amp;rsquo;&quot;, with: &quot;’&quot;)
+            .replacingOccurrences(of: &quot;&amp;lsquo;&quot;, with: &quot;’&quot;)
+            .replacingOccurrences(of: &quot;&amp;rdquo;&quot;, with: &quot;”&quot;)
+            .replacingOccurrences(of: &quot;&amp;ldquo;&quot;, with: &quot;“&quot;)
             .replacingOccurrences(of: &quot;&amp;amp;&quot;, with: &quot;&amp;&quot;)
 
     return Node(element: InternalElement.textRun, content: .text(contentRun), attributes: [])
@@ -732,7 +737,7 @@
             }
         }
     }
-    var address = &quot;https://nearthespeedoflight.com/smol.html&quot;
+    var address = &quot;https://nearthespeedoflight.com/browser.html&quot;
 
     private var backStack: [(Document, URL)] = []
     private var forwardStack: [(Document, URL)] = []
@@ -1199,11 +1204,16 @@ extension EnvironmentValues {
 <pre><code>let entityDecodedContents = textContents
     .map(\.body)
     .joined()
-       .replacingOccurrences(of: &quot;&amp;#x000A;&quot;, with: &quot;&quot;)
-       .replacingOccurrences(of: &quot;&amp;lt;&quot;, with: &quot;&lt;&quot;)
-       .replacingOccurrences(of: &quot;&amp;gt;&quot;, with: &quot;&gt;&quot;)
-       .replacingOccurrences(of: &quot;&amp;quot;&quot;, with: &quot;\&quot;&quot;)
-       .replacingOccurrences(of: &quot;&amp;amp;&quot;, with: &quot;&amp;&quot;)
+        .replacingOccurrences(of: &quot;&amp;#x000A;&quot;, with: &quot;&quot;)
+        .replacingOccurrences(of: &quot;&amp;lt;&quot;, with: &quot;&lt;&quot;)
+        .replacingOccurrences(of: &quot;&amp;gt;&quot;, with: &quot;&gt;&quot;)
+        .replacingOccurrences(of: &quot;&amp;#39;&quot;, with: &quot;&#39;&quot;)
+        .replacingOccurrences(of: &quot;&amp;quot;&quot;, with: &quot;\&quot;&quot;)
+        .replacingOccurrences(of: &quot;&amp;rsquo;&quot;, with: &quot;’&quot;)
+        .replacingOccurrences(of: &quot;&amp;lsquo;&quot;, with: &quot;’&quot;)
+        .replacingOccurrences(of: &quot;&amp;rdquo;&quot;, with: &quot;”&quot;)
+        .replacingOccurrences(of: &quot;&amp;ldquo;&quot;, with: &quot;“&quot;)
+        .replacingOccurrences(of: &quot;&amp;amp;&quot;, with: &quot;&amp;&quot;)
 
 let contentRun = shouldPreserveWhitespace ? entityDecodedContents : entityDecodedContents
     .replacingOccurrences(of: &quot;\n&quot;, with: &quot; &quot;)
