@@ -1,16 +1,20 @@
 #  Let's Write a Web Browser from Scratch in Swift!
 
+*April 2023*
+
 There's a rumour that Apple's going to start allowing custom, non-WebKit based browser engines on iOS starting later this year. While that most likely means Chrome, Firefox, and the other big browsers could start using custom engines, it also means you could write your own too. So why not try it?
 
-In this 2 part series, I'll take you through how to write a basic web browser, from parsing HTML in Swift to rendering the pages with SwiftUI, displaying them with a simple, but familiar interface.
+In this 2 part series ([part 2 is here](https://nearthespeedoflight.com/browser-2.html)), I'll take you through how to write a basic web browser from scratch, from parsing HTML in Swift to rendering the pages with SwiftUI, displaying them with a simple, but familiar interface.
 
 <img src="smol-screenshot.png" style="display: block" width="600">
 
-You might be thinking "Aren't web browsers huge, incredibly complicated pieces of software?" and yes, the big ones we use every day are huge and complicated. But even huge and complicated pieces of software are still "just software" at their core, written by normal programmers just doing their job or following their passion.
+You might be thinking "Aren't web browsers huge, incredibly complicated pieces of software?" and yes, the big ones we use every day are huge and complicated. But even huge and complicated pieces of software are still "just software" at their core, written by normal programmers just doing their job or following their passion. You can write one too.
 
 What we're attempting in this series is a very simple browser, and the end result is actually a little under 1000 lines of fairly straightforward Swift code. We'll focus solely on rendering a subset of HTML, leaving CSS and Javascript as exercises for the reader :). We'll take many shortcuts and liberties, but in the end you should have an app that can render unstyled, standard HTML pages. And you'll also have some tools for writing programming language parsers by hand, which you could use to write your own custom language.
 
 The feature set of our browser is going to be small, but the goal is this: **you should be able to render this very browser tutorial web page in the browser itself**. Fun, right?
+
+(by the way: I'm looking for work, so if you're looking to hire someone to work on browsers, programming languages, dev tools, or Swift apps, I'm your guy! [Please reach out](mailto:i.jasonbrennan@gmail.com), I'd love to hear from you)
 
 ## The Architecture
 
@@ -26,9 +30,9 @@ With that general archictecture in mind, let's fire up Xcode and get started.
 
 ### Quick Tips
 
-If you're coding along as you read this tutorial, I highly recommend typing out all the code yourself, instead of copying and pasting. In my experience, I find this forces you to slow down and work more deliberately, and I think it'll help you understand things better in the process.
+If you're coding along as you read this tutorial, I highly recommend typing out all the code yourself, instead of copying and pasting. In my experience, I find this forces you to slow down and work more deliberately, and I think it'll help you understand things better in the process. You can also find [the complete source code on Github](https://github.com/jbrennan/SmolHTML).
 
-I'd also recommend changing things as you move along. None of what I've written is the definitive way to write this code, and you could probably put your own spin on it. Or extend it to do even more!
+I'd also recommend changing things as you move along. None of what I've written is the definitive way to write this code, and you could probably put your own spin on it. Or better, extend it to do even more!
 
 The code I'll be showing in this tutorial is more or less "finished" as is (we won't be building to much of it iteratively, because that would take up a whole book!), but please know my browser *was* built iteratively (you can check out the git history if you'd like to see my stumbles as I went!). Some bits of code in the tutorial will depend upon code we haven't written yet, so please use your imagination if things don't compile at every stage.
 
@@ -695,10 +699,14 @@ Last, we return the completed attribute.
 
 This completes the end of part 1! We built ourselves some tools for breaking apart a program string into tokens and parsing them. And then we built some data types that know how to parse themselves using those tools. HTML is a kind of strange language, but we saw some familiar patterns repeated in multiple places (things being wrapped inside others, for example).
 
-In the next part, we'll take the data we just parsed and render it with SwiftUI.
+In the next part, we'll take the data we just parsed and render it with SwiftUI. [Onward to part 2!](https://nearthespeedoflight.com/browser-2.html)
 
 
 # Part 2: Rendering in SwiftUI
+
+Welcome to part 2 of "Writing a web browser engine in Swift!" In [part 1](https://nearthespeedoflight.com/browser.html), we built a basic html parser from the ground up, learning about tokenizing, parsing, and syntax trees. We now have a fairly complete set of tools that can parse html into plain old Swift structs.
+
+In this part, we'll build our rendering engine with SwiftUI views. Let's get started.
 
 ## The Architecture
 
@@ -739,7 +747,7 @@ class PageController: ObservableObject {
 			}
 		}
 	}
-	var address = "https://nearthespeedoflight.com/smol.html"
+	var address = "https://nearthespeedoflight.com/browser.html"
 	
 	private var backStack: [(Document, URL)] = []
 	private var forwardStack: [(Document, URL)] = []
@@ -1414,10 +1422,6 @@ You could extend this foundation in so many ways:
 
 But most of all, I hope you enjoyed yourself and learned a thing or two.
 
-Thanks for reading!
+Thanks for reading! And special thanks to Dalton Claybrook, Dean Silfen, Drew Wyatt, and Kate Brennan for all their feedback and encouragement.
 
 (ps: I'm looking for work, so if you're looking to hire someone to work on browsers, programming languages, dev tools, or Swift apps, I'm your guy! [Please reach out](mailto:i.jasonbrennan@gmail.com), I'd love to hear from you)
-
-todo:
-
-- screenshots

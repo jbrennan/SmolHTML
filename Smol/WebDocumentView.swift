@@ -115,7 +115,7 @@ class PageController: ObservableObject {
 			}
 		}
 	}
-	var address = "https://nearthespeedoflight.com/smol2.html"
+	var address = "https://nearthespeedoflight.com/browser.html"
 	
 	private var backStack: [(Document, URL)] = []
 	private var forwardStack: [(Document, URL)] = []
@@ -698,7 +698,12 @@ struct Node: Hashable, Parsable, Identifiable {
 						   .replacingOccurrences(of: "&#x000A;", with: "")
 						   .replacingOccurrences(of: "&lt;", with: "<")
 						   .replacingOccurrences(of: "&gt;", with: ">")
+						   .replacingOccurrences(of: "&#39;", with: "'")
 						   .replacingOccurrences(of: "&quot;", with: "\"")
+						   .replacingOccurrences(of: "&rsquo;", with: "’")
+						   .replacingOccurrences(of: "&lsquo;", with: "’")
+						   .replacingOccurrences(of: "&rdquo;", with: "”")
+						   .replacingOccurrences(of: "&ldquo;", with: "“")
 						   .replacingOccurrences(of: "&amp;", with: "&")
 					let contentRun = shouldPreserveWhitespace ? entityDecodedContents : entityDecodedContents
 						.replacingOccurrences(of: "\n", with: " ")

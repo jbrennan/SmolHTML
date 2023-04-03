@@ -1,21 +1,20 @@
-<html>
-	<head>
-		<title>Smol page</title>
-	</head>
-	<body style="max-width: 600px">
 <h1>Let&rsquo;s Write a Web Browser from Scratch in Swift!</h1>
+
+<p><em>April 2023</em></p>
 
 <p>There&rsquo;s a rumour that Apple&rsquo;s going to start allowing custom, non-WebKit based browser engines on iOS starting later this year. While that most likely means Chrome, Firefox, and the other big browsers could start using custom engines, it also means you could write your own too. So why not try it?</p>
 
-<p>In this 2 part series, I&rsquo;ll take you through how to write a basic web browser, from parsing HTML in Swift to rendering the pages with SwiftUI, displaying them with a simple, but familiar interface.</p>
+<p>In this 2 part series (<a href="https://nearthespeedoflight.com/browser-2.html">part 2 is here</a>), I&rsquo;ll take you through how to write a basic web browser from scratch, from parsing HTML in Swift to rendering the pages with SwiftUI, displaying them with a simple, but familiar interface.</p>
 
 <p><img src="smol-screenshot.png" style="display: block" width="600"></p>
 
-<p>You might be thinking &ldquo;Aren&rsquo;t web browsers huge, incredibly complicated pieces of software?&rdquo; and yes, the big ones we use every day are huge and complicated. But even huge and complicated pieces of software are still &ldquo;just software&rdquo; at their core, written by normal programmers just doing their job or following their passion.</p>
+<p>You might be thinking &ldquo;Aren&rsquo;t web browsers huge, incredibly complicated pieces of software?&rdquo; and yes, the big ones we use every day are huge and complicated. But even huge and complicated pieces of software are still &ldquo;just software&rdquo; at their core, written by normal programmers just doing their job or following their passion. You can write one too.</p>
 
 <p>What we&rsquo;re attempting in this series is a very simple browser, and the end result is actually a little under 1000 lines of fairly straightforward Swift code. We&rsquo;ll focus solely on rendering a subset of HTML, leaving CSS and Javascript as exercises for the reader :). We&rsquo;ll take many shortcuts and liberties, but in the end you should have an app that can render unstyled, standard HTML pages. And you&rsquo;ll also have some tools for writing programming language parsers by hand, which you could use to write your own custom language.</p>
 
 <p>The feature set of our browser is going to be small, but the goal is this: <strong>you should be able to render this very browser tutorial web page in the browser itself</strong>. Fun, right?</p>
+
+<p>(by the way: I&rsquo;m looking for work, so if you&rsquo;re looking to hire someone to work on browsers, programming languages, dev tools, or Swift apps, I&rsquo;m your guy! <a href="mailto:i.jasonbrennan@gmail.com">Please reach out</a>, I&rsquo;d love to hear from you)</p>
 
 <h2>The Architecture</h2>
 
@@ -33,9 +32,9 @@
 
 <h3>Quick Tips</h3>
 
-<p>If you&rsquo;re coding along as you read this tutorial, I highly recommend typing out all the code yourself, instead of copying and pasting. In my experience, I find this forces you to slow down and work more deliberately, and I think it&rsquo;ll help you understand things better in the process.</p>
+<p>If you&rsquo;re coding along as you read this tutorial, I highly recommend typing out all the code yourself, instead of copying and pasting. In my experience, I find this forces you to slow down and work more deliberately, and I think it&rsquo;ll help you understand things better in the process. You can also find <a href="https://github.com/jbrennan/SmolHTML">the complete source code on Github</a>.</p>
 
-<p>I&rsquo;d also recommend changing things as you move along. None of what I&rsquo;ve written is the definitive way to write this code, and you could probably put your own spin on it. Or extend it to do even more!</p>
+<p>I&rsquo;d also recommend changing things as you move along. None of what I&rsquo;ve written is the definitive way to write this code, and you could probably put your own spin on it. Or better, extend it to do even more!</p>
 
 <p>The code I&rsquo;ll be showing in this tutorial is more or less &ldquo;finished&rdquo; as is (we won&rsquo;t be building to much of it iteratively, because that would take up a whole book!), but please know my browser <em>was</em> built iteratively (you can check out the git history if you&rsquo;d like to see my stumbles as I went!). Some bits of code in the tutorial will depend upon code we haven&rsquo;t written yet, so please use your imagination if things don&rsquo;t compile at every stage.</p>
 
@@ -420,7 +419,7 @@
 
 <p>Next, we have an error type defined to list the things that can go wrong during parsing and which act as control flow.</p>
 
-<p>Finally, we have <code>Node</code>&rsquo;s properties: its element (or tag name), the aforementioned content, and any attributes that were in the start tag.</p>
+<p>Finally, we have <code>Node</code>&lsquo;s properties: its element (or tag name), the aforementioned content, and any attributes that were in the start tag.</p>
 
 <p>Now it&rsquo;s on to parsing the node itself, which we&rsquo;ll break down into some chunks:</p>
 
@@ -484,7 +483,7 @@
 
 <p>If it&rsquo;s not a standard node, it might be a <strong>text run</strong> node. Text runs in html are not real nodes like <code>&lt;div&gt;</code> or <code>&lt;p&gt;</code>, instead they&rsquo;re the any text content inside of other tags. So if we have a node like <code>&lt;p&gt;Hi there&lt;/p&gt;</code>, this will get parsed out to a p <code>Node</code>, whose <code>content</code> is <code>.childNodes(children)</code>, and <code>children</code> will be an array with a single <code>Node</code>, whose <code>content</code> is <code>.text(&quot;Hi there&quot;)</code>. This structure <em>feels weird</em>, but it allows us to parse more complicated nodes like <code>&lt;p&gt;Hi there, &lt;bold&gt;friend&lt;/bold&gt;&lt;/p&gt;</code>. In short, we&rsquo;re wrapping otherwise un-tagged text into a pretend <code>&lt;text-run&gt;</code> tag and then treating it as we do other nodes.</p>
 
-<p>To parse a text run, we first consume every token that&rsquo;s not an <code>&lt;</code> character, which we assume might be the beginning of a tag. If we find any contents, we then join the contents&#39; body together into one big string.</p>
+<p>To parse a text run, we first consume every token that&rsquo;s not an <code>&lt;</code> character, which we assume might be the beginning of a tag. If we find any contents, we then join the contents&rsquo; body together into one big string.</p>
 
 <p>Then, we do some quick and dirty text replacement, replacing encoded html entities with their display characters and non-space whitespaces with spaces for display (this doesn&rsquo;t follow the html standard for whitespaces perfectly, but it works well enough). With all the replacement done, we return the text run node.   </p>
 
@@ -682,9 +681,13 @@
 
 <p>This completes the end of part 1! We built ourselves some tools for breaking apart a program string into tokens and parsing them. And then we built some data types that know how to parse themselves using those tools. HTML is a kind of strange language, but we saw some familiar patterns repeated in multiple places (things being wrapped inside others, for example).</p>
 
-<p>In the next part, we&rsquo;ll take the data we just parsed and render it with SwiftUI.</p>
+<p>In the next part, we&rsquo;ll take the data we just parsed and render it with SwiftUI. <a href="https://nearthespeedoflight.com/browser-2.html">Onward to part 2!</a></p>
 
 <h1>Part 2: Rendering in SwiftUI</h1>
+
+<p>Welcome to part 2 of &ldquo;Writing a web browser engine in Swift!&rdquo; In <a href="https://nearthespeedoflight.com/browser.html">part 1</a>, we built a basic html parser from the ground up, learning about tokenizing, parsing, and syntax trees. We now have a fairly complete set of tools that can parse html into plain old Swift structs.</p>
+
+<p>In this part, we&rsquo;ll build our rendering engine with SwiftUI views. Let&rsquo;s get started.</p>
 
 <h2>The Architecture</h2>
 
@@ -1373,14 +1376,6 @@ let contentRun = shouldPreserveWhitespace ? entityDecodedContents : entityDecode
 
 <p>But most of all, I hope you enjoyed yourself and learned a thing or two.</p>
 
-<p>Thanks for reading!</p>
+<p>Thanks for reading! And special thanks to Dalton Claybrook, Dean Silfen, Drew Wyatt, and Kate Brennan for all their feedback and encouragement.</p>
 
 <p>(ps: I&rsquo;m looking for work, so if you&rsquo;re looking to hire someone to work on browsers, programming languages, dev tools, or Swift apps, I&rsquo;m your guy! <a href="mailto:i.jasonbrennan@gmail.com">Please reach out</a>, I&rsquo;d love to hear from you)</p>
-
-<p>todo:</p>
-
-<ul>
-<li>screenshots</li>
-</ul>
-	</body>
-</html>
