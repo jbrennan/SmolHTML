@@ -1057,8 +1057,6 @@ struct BlocksView: View {
 						.font(Font.custom("Times", size: 24).bold())
 				case "p":
 					InlineContentWrappingBlockView(node: childNode)
-				case "img":
-					ImageView(node: childNode)
 				case "div", "section", "main", "footer", "article", "header", "nav", "aside":
 					BlocksView(children: childNode.childNodesSortedIntoBlocks)
 				case "pre":
@@ -1174,48 +1172,6 @@ The rest of the cases are similar, in that we create some attributes, modifying 
 
 It's all a little boilerplatey but it gets the job done.
 
-### ImageView
-
-SwiftUI already has the a perfect view for us: `AsyncImage`, which we'll wrap in our own `ImageView` to customize it a little.
-
-(Note: `<img>` nodes still won't render yet because they're considered inline by default, and we won't add support for inline images. However, at the end of the tutorial we'll add support for `display: block` styles on images)
-
-```
-struct ImageView: View {
-	let node: Node
-	@Environment(\.urlBuilder) var urlBuilder
-	
-	var body: some View {
-		AsyncImage(url: urlBuilder(URL.init(string: node.attributeDictionary["src"] ?? "")!), content: { image in
-			image
-				.resizable()
-				.aspectRatio(contentMode: .fit)
-				.frame(
-					width: node.attributeDictionary["width"].flatMap(WebSize.init(rawValue:))?.dimension,
-					height: node.attributeDictionary["height"].flatMap(WebSize.init(rawValue:))?.dimension
-				)
-		}, placeholder: {
-			Color(white: 0.9).cornerRadius(4)
-		})
-	}
-}
-```
-
-From the environment, we pull out the `urlBuilder` function we declared earlier in our view hierarchy, so that we can make sure the image's `src` url is an absolute url, that we'll then hand off to SwiftUI to load asynchronously for us. When the image is ready, we resize it and constrain it as necessary, depending on any width or height attributes of the `<img>` node.
-
-```
-struct WebSize {
-	let rawValue: String
-	
-	var dimension: CGFloat {
-		// trim anything that isn't a digit, then try to parse that into an int. this ignores things like "px"
-		CGFloat(Int(rawValue.prefix(while: \.isWholeNumber)) ?? 0)
-	}
-}
-```
-
-`WebSize` is a small little type for extracting number values out of sizing values in html. We're assuming everything is measured in `px` for simplicity's sake. Sizing in html is a complicated topic, but you could go deep here if you wanted.
-
 ### ListNodeView
 
 Our last node view is the `ListNodeView`, which we'll use for displaying both ordered and unordered lists (`<ol>` and `<ul>`).
@@ -1302,28 +1258,35 @@ let shouldPreserveWhitespace = startTag.element == "pre" || shouldPreserveWhites
 
 Now if we run the browser, we should see that whitespace preservation works as expected.
 
-### Two Last Things
+### Displaying images
 
-You may have noticed that most browsers, when given an unstyled html page, will render the body using the entire width of the browser window, and our browser does this exact same thing. However, on modern monitors, this can result in extremely long lines of text that are kind of hard to read due to their length, so the nice thing to do is to style the container with a maximum width.
+Let's add support for displaying images using the `<img>` tag. By default, image elements are considered to be "inline" (ie, `display: inline` in CSS terms), but inline images are a little complicated, so I'll leave those as an exercise for the reader. However, supporting block images will be a little more straightforward, so let's add support for that.
 
-While supporting all of CSS is way, way out of scope for this tutorial, it would still be nice to leave us with a starting point, so I'd like to add support to the `style` attribute, which we'll parse in a rather crude way. Let's start with a type representing a style.
+While supporting all of CSS is way, way out of scope for this tutorial, it would still be nice to leave us with a starting point, so I'd like to add support to the `style` attribute, which we'll parse in a rather crude way. Once we have the style attribute parsed, we'll add support for `display: block` as well. Let's start with a type representing a style.
 
 ```
 struct Style {
 	
-	var maxWidth: CGFloat? {
-		rawValue["max-width"].map(WebSize.init(rawValue:)).map(\.dimension)
+	enum DisplayStyle { case inline, block }
+	
+	var display: DisplayStyle? {
+		switch rawValue["display"] {
+		case "inline": return .inline
+		case "block": return .block
+		default:
+			return nil
+		}
 	}
-	
+
 	private let rawValue: [String: String]
-	
+
 	init(rawPairs: [String: String]) {
 		self.rawValue = rawPairs
 	}
 }
 ```
 
-`Style` wraps an underlying dictionary of keys and values, and adds a helper property that looks for a `max-width` key and returns the value interpreted as a float. Now let's create a style instance from a node's style attribute, if it exists. In an extension on `Node`, put the following:
+`Style` wraps an underlying dictionary of keys and values, and adds a helper property that looks for a `display` key, returning the value interpreted as either `inline` or `block` (or `nil`, if missing or something else). Now let's create a style instance from a node's style attribute, if it exists. In an extension on `Node`, put the following:
 
 ```
 var styleFromAttributes: Style? {
@@ -1350,37 +1313,7 @@ First, we check to see if we even have a style attribute, otherwise we bail. The
 
 Finally, we initialize the `Style` with a dictionary, whose keys and values are found by splitting up those substrings from earlier on colons, trimming out whitespace, and finally returning them as a non-nil tuple. This code is kinda fragile would definitely be made more powerful (and extensible!) if we wrote a parser like we did for html, but I'll leave that as an exercise for the reader :)
 
-Now that we can access a typed version of a node's style attribute, let's use it on our `BodyView`. Change the body view's `body` (:S) scroll view to this:
-
-```
-ScrollView {
-	HStack(spacing: 0) {
-		BlocksView(children: bodyNode.childNodesSortedIntoBlocks)
-			.frame(maxWidth: bodyNode.styleFromAttributes?.maxWidth)
-		Spacer()
-	}
-	.padding(20)
-}
-```
-
-This makes the `BlocksView` respect the `max-width` from the `<body>` tag, if it exists.
-
-Ok, last last last thing I promise: in html `<img>` nodes are considered inline elements by default. Our browser doesn't support this at all (but you could add it if you'd like). We *do* want to support images as block elements, though. Now that we have basic support for the style attribute, let's extend it to support the `display` property. Inside `Style`, add the following:
-
-```
-enum DisplayStyle { case inline, block }
-
-var display: DisplayStyle? {
-	switch rawValue["display"] {
-	case "inline": return .inline
-	case "block": return .block
-	default:
-		return nil
-	}
-}
-```
-
-Then, in our `childNodesSortedIntoBlocks` property, edit the the for loop to look like this:
+Now that we can parse a `Style` from a node's attributes, the last thing we need to do is modify how we're sorting / grouping nodes. In the `Node.childNodesSortedIntoBlocks` property, edit the for loop to look like this:
 
 ```
 for node in childNodes {
@@ -1395,7 +1328,79 @@ for node in childNodes {
 }
 ```
 
-With that modification, `<img>` nodes that have a style attribute declaring they should be `display: block` will now be properly considered block views in our renderer, and appear accordingly.
+With that modification, `<img>` nodes that have a style attribute declaring they should be `display: block` will now be properly considered block views in our renderer, and appear accordingly. All that's left is to create a view that can load and display images. SwiftUI already has the a perfect view for us: `AsyncImage`, which we'll wrap in our own `ImageView` to customize it a little.
+
+```
+struct ImageView: View {
+	let node: Node
+	@Environment(\.urlBuilder) var urlBuilder
+
+	var body: some View {
+		AsyncImage(url: urlBuilder(URL(string: node.attributeDictionary["src"] ?? "")!), content: { image in
+			image
+				.resizable()
+				.aspectRatio(contentMode: .fit)
+				.frame(
+					width: node.attributeDictionary["width"].flatMap(WebSize.init(rawValue:))?.dimension,
+					height: node.attributeDictionary["height"].flatMap(WebSize.init(rawValue:))?.dimension
+				)
+		}, placeholder: {
+			Color(white: 0.9).cornerRadius(4)
+		})
+	}
+}
+```
+
+From the environment, we pull out the `urlBuilder` function we declared earlier in our view hierarchy, so that we can make sure the image's `src` url is an absolute url, that we'll then hand off to SwiftUI to load asynchronously for us. When the image is ready, we resize it and constrain it as necessary, depending on any width or height attributes of the `<img>` node.
+
+```
+struct WebSize {
+	let rawValue: String
+
+	var dimension: CGFloat {
+		// trim anything that isn't a digit, then try to parse that into an int. this ignores things like "px"
+		CGFloat(Int(rawValue.prefix(while: \.isWholeNumber)) ?? 0)
+	}
+}
+```
+
+`WebSize` is a small little type for extracting number values out of sizing values in html. We're assuming everything is measured in `px` for simplicity's sake. Sizing in html is a complicated topic, but you could go deep here if you wanted.
+
+Finally, let's add a case for `img` nodes in our `BlocksView` body switch statement that uses the new image view we created:
+
+```
+case "img":
+	ImageView(node: childNode)
+```
+
+With that, we should finally be able to see image tags with their `display` set to `block`.
+
+### One last thing
+
+You may have noticed that most browsers, when given an unstyled html page, will render the body using the entire width of the browser window, and our browser does this exact same thing. However, on modern monitors, this can result in extremely long lines of text that are kind of hard to read due to their length, so the nice thing to do is to style the container with a maximum width.
+
+Now that we have support for the `style` attribute, let's parse out the `max-width` style, if it's present. In the `Style` struct, add the following property:
+
+```
+var maxWidth: CGFloat? {
+	rawValue["max-width"].map(WebSize.init(rawValue:)).map(\.dimension)
+}
+```
+
+Let's use this property on our `BodyView`. Change the body view's `body` scroll view to this:
+
+```
+ScrollView {
+	HStack(spacing: 0) {
+		BlocksView(children: bodyNode.childNodesSortedIntoBlocks)
+			.frame(maxWidth: bodyNode.styleFromAttributes?.maxWidth)
+		Spacer()
+	}
+	.padding(20)
+}
+```
+
+This makes the `BlocksView` respect the `max-width` from the `<body>` tag, if it exists.
 
 ## The End
 
