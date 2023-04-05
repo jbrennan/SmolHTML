@@ -34,7 +34,7 @@ If you're coding along as you read this tutorial, I highly recommend typing out 
 
 I'd also recommend changing things as you move along. None of what I've written is the definitive way to write this code, and you could probably put your own spin on it. Or better, extend it to do even more!
 
-The code I'll be showing in this tutorial is more or less "finished" as is (we won't be building to much of it iteratively, because that would take up a whole book!), but please know my browser *was* built iteratively (you can check out the git history if you'd like to see my stumbles as I went!). Some bits of code in the tutorial will depend upon code we haven't written yet, so please use your imagination if things don't compile at every stage.
+The code I'll be showing in this tutorial is more or less "finished" as is (we won't be building too much of it iteratively, because that would take up a whole book!), but please know my browser *was* built iteratively (you can check out the git history if you'd like to see my stumbles as I went!). Some bits of code in the tutorial will depend upon code we haven't written yet, so please use your imagination if things don't compile at every stage.
 
 Finally, I won't be providing any unit tests in the tutorial, but you may very well like to include some, especially if you decide to extend your browser after you're done. I find programming languages lend themselves very well to unit testing, as they have well defined inputs and outputs.
 
@@ -53,7 +53,7 @@ Tokenizing is the process of breaking down our program from a `String` into an a
 We define the type along with some initializers that'll help us as we're tokenizing.
 
 ```
-struct Token: Equatable, CustomDebugStringConvertible {
+struct Token: Equatable {
 	
 	enum Kind: Equatable {
 		case text, openAngleBracket, closeAngleBracket, forwardSlash, equals, hyphen, singleQuote, doubleQuote, whitespace, bang
@@ -80,8 +80,6 @@ struct Token: Equatable, CustomDebugStringConvertible {
 		default: return nil
 		}
 	}
-	
-	var debugDescription: String { body }
 }
 ```
 
